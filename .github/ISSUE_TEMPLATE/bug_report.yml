@@ -1,0 +1,71 @@
+name: 🐛 Bug报告
+description: 报告插件的错误或异常行为
+title: "[BUG] "
+labels: ["bug", "需要确认"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你使用 **Turnrig** 请详细描述遇到的问题，这样我们才能更好地帮助你解决问题呢！✨
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: 🔍 问题描述与复现步骤
+      description: 清晰简洁地描述遇到的问题
+      placeholder: 例如：转发消息时出现错误，或者某个功能不工作等...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 🤖 平台类型
+      description: 在哪个协议端上遇到的问题？
+      options:
+        - NapCat
+        - Lagrange
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📋 相关日志
+      description: 请提供相关的错误日志或截图
+      placeholder: |
+        请粘贴相关的日志内容，或者上传截图...
+        日志通常在 AstrBot 的日志文件中可以找到
+      render: shell
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 🏷️ 插件版本/AstrBot版本/QQ版本/协议端
+      description: 你使用的插件、AstrBot、QQ、协议端的版本是多少？
+      placeholder: 例如：v1.1.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📎 其他信息
+      description: 还有什么其他相关的信息想告诉我们的吗？
+      placeholder: 例如：环境信息、相关的其他插件、特殊的使用场景等...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ 确认事项
+      description: 请确认以下事项
+      options:
+        - label: 我已经搜索了现有的issues，没有找到重复的问题
+          required: true
+        - label: 我已经阅读了文档和常见问题
+          required: true
+        - label: 我提供的信息是准确和完整的
+          required: true 
