@@ -1,0 +1,9 @@
+{
+  "send_single_messages": {
+    "description": "启用单条消息发送（跳过合并转发）",
+    "type": "bool",
+    "hint": "开启后将不再使用合并转发，而是逐条发送消息",
+    "default": false
+  }
+}
+# Modified at Sat Sep 27 23:33:44     2025
