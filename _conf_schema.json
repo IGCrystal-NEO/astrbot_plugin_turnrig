@@ -1,0 +1,61 @@
+{
+  "tasks": {
+    "description": "转发任务列表",
+    "type": "list",
+    "hint": "每个任务都有独立的监听源和转发目标配置",
+    "items": {
+      "id": {
+        "description": "任务ID",
+        "type": "string",
+        "hint": "系统自动生成的任务标识符"
+      },
+      "name": {
+        "description": "任务名称",
+        "type": "string",
+        "hint": "便于识别的任务名称"
+      },
+      "monitor_groups": {
+        "description": "监听的群聊列表",
+        "type": "list",
+        "hint": "需要监听的群聊ID列表",
+        "default": []
+      },
+      "monitor_private_users": {
+        "description": "监听的私聊用户列表",
+        "type": "list",
+        "hint": "需要监听的私聊用户ID列表",
+        "default": []
+      },
+      "monitored_users_in_groups": {
+        "description": "监听的群聊中的特定用户",
+        "type": "object",
+        "hint": "格式：{群聊ID: [用户ID1, 用户ID2, ...]}",
+        "default": {}
+      },
+      "target_sessions": {
+        "description": "转发目标会话",
+        "type": "list",
+        "hint": "消息将被转发到这些会话，格式为：平台名:消息类型:会话ID",
+        "default": []
+      },
+      "max_messages": {
+        "description": "任务消息阈值",
+        "type": "int",
+        "hint": "当缓存的消息达到此数量时，将触发转发",
+        "default": 20
+      },
+      "enabled": {
+        "description": "是否启用该任务",
+        "type": "bool",
+        "hint": "设置为false可临时禁用此任务而不删除配置",
+        "default": true
+      }
+    }
+  },
+  "default_max_messages": {
+    "description": "默认消息阈值",
+    "type": "int",
+    "hint": "当任务未设置消息阈值时使用的默认值",
+    "default": 20
+  }
+}
