@@ -1,6 +1,7 @@
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star
 from astrbot.api import logger
+import time
 
 # 更新导入路径
 from ..utils.session_formatter import normalize_session_id
@@ -15,7 +16,35 @@ class CommandHandlers:
             plugin_instance: TurnRigPlugin的实例，用于访问其方法和属性
         """
         self.plugin = plugin_instance
+        
+        # 迁移旧格式的processed_message_ids到新格式
+        self._migrate_processed_message_ids()
+        
+        # 启动定期清理过期消息ID的任务
+        self.plugin.start_cleanup_task()
 
+    def _migrate_processed_message_ids(self):
+        """将旧格式的全局processed_message_ids迁移到按任务ID分组的新格式"""
+        if 'processed_message_ids' in self.plugin.config and isinstance(self.plugin.config['processed_message_ids'], list):
+            logger.info("检测到旧格式的processed_message_ids，正在迁移到新格式...")
+            
+            # 获取所有任务ID
+            task_ids = [str(task.get('id', '')) for task in self.plugin.config['tasks']]
+            
+            if task_ids:
+                # 如果有任务，将所有消息ID分配给第一个任务（简单处理）
+                first_task_id = task_ids[0]
+                self.plugin.config[f'processed_message_ids_{first_task_id}'] = [
+                    {"id": msg_id, "timestamp": int(time.time())} 
+                    for msg_id in self.plugin.config['processed_message_ids']
+                ]
+                logger.info(f"已将 {len(self.plugin.config['processed_message_ids'])} 个消息ID迁移到任务 {first_task_id}")
+            
+            # 删除旧的全局processed_message_ids
+            del self.plugin.config['processed_message_ids']
+            self.plugin.save_config_file()
+            logger.info("迁移完成")
+    
     def _ensure_full_session_id(self, session_id):
         """确保会话ID是完整格式喵～"""
         normalized_id = normalize_session_id(session_id)
@@ -112,28 +141,56 @@ class CommandHandlers:
                             f"/turnrig target {task_id} 群聊/私聊 <会话ID>")
 
     async def handle_delete_task(self, event: AstrMessageEvent, task_id: str = None):
-        """删除转发任务喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能删除转发任务喵～")
-            
+        """处理删除任务的指令"""
+        # 管理员权限检查
+        if event.role != "admin":
+            return event.plain_result("只有管理员可以删除任务喵～")
+        
         if not task_id:
-            return event.plain_result("请指定要删除的任务ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
-            
-        # 从配置中删除任务
-        self.plugin.config['tasks'] = [t for t in self.plugin.config['tasks'] if t.get('id') != task_id]
+            return event.plain_result("请提供要删除的任务ID喵～\n用法: /turnrig delete <任务ID>")
         
-        # 如果有缓存，也一并删除
-        if task_id in self.plugin.message_cache:
-            del self.plugin.message_cache[task_id]
-            
-        self.plugin.save_config_file()
-        self.plugin.save_message_cache()
+        # 查找并删除任务
+        task_id_str = str(task_id)  # 确保使用字符串比较
+        deleted = False
+        tasks_to_keep = []
         
-        return event.plain_result(f"已删除任务 [{task.get('name')}]，ID: {task_id}")
+        # 使用列表推导而不是直接修改遍历中的列表
+        for task in self.plugin.config['tasks']:
+            if str(task.get('id', '')) != task_id_str:
+                tasks_to_keep.append(task)
+            else:
+                deleted = True
+                task_name = task.get('name', '未命名')
+                logger.info(f"找到要删除的任务: {task_name} (ID: {task_id})")
+        
+        # 只有在确实找到并删除了任务后才更新配置
+        if deleted:
+            # 更新配置中的任务列表
+            self.plugin.config['tasks'] = tasks_to_keep
+            
+            # 删除相关的消息缓存
+            if task_id_str in self.plugin.message_cache:
+                del self.plugin.message_cache[task_id_str]
+                logger.info(f"已删除任务 {task_id} 的消息缓存")
+            
+            # 删除任务特定的processed_message_ids
+            processed_msg_key = f'processed_message_ids_{task_id_str}'
+            if processed_msg_key in self.plugin.config:
+                logger.info(f"删除任务 {task_id} 的processed_message_ids")
+                del self.plugin.config[processed_msg_key]
+            
+            # 立即保存更新后的配置和缓存
+            self.plugin.save_config_file()
+            self.plugin.save_message_cache()
+            
+            # 强制重新加载缓存，以确保删除操作生效
+            self.plugin.message_cache = self.plugin.config_manager.load_message_cache() or {}
+            
+            logger.info(f"已成功删除任务 {task_id} 并保存配置")
+            return event.plain_result(f"已成功删除任务 {task_id} 喵～")
+        else:
+            logger.warning(f"未找到ID为 {task_id} 的任务")
+            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～，请检查任务ID是否正确")
 
     async def handle_enable_task(self, event: AstrMessageEvent, task_id: str = None):
         """启用转发任务喵～"""
@@ -387,6 +444,10 @@ class CommandHandlers:
 
 · /turnrig unmonitor <任务ID> 群聊/私聊 <会话ID> - 删除监听源
 
+· /turnrig adduser <任务ID> <群号> <QQ号> - 添加群聊内特定用户监听
+
+· /turnrig removeuser <任务ID> <群号> <QQ号> - 删除群聊内特定用户监听
+
 · /turnrig target <任务ID> 群聊/私聊 <会话ID> - 添加转发目标
 
 · /turnrig untarget <任务ID> 群聊/私聊 <会话ID> - 删除转发目标
@@ -398,6 +459,8 @@ class CommandHandlers:
 · /turnrig rename <任务ID> <名称> - 重命名任务
 
 · /turnrig forward <任务ID> [群聊/私聊 <会话ID>] - 手动触发转发
+
+· /turnrig cleanup <天数> - 清理指定天数前的已处理消息ID
 
 【便捷指令】
 
@@ -419,6 +482,17 @@ class CommandHandlers:
 
         return event.plain_result(help_text)
 
+    async def handle_cleanup_ids(self, event: AstrMessageEvent, days: int = 7):
+        """清理过期的消息ID喵～"""
+        if not event.is_admin():
+            return event.plain_result("只有管理员才能清理消息ID喵～")
+        
+        if days <= 0:
+            return event.plain_result("天数必须大于0喵～")
+        
+        cleaned_count = self.plugin.cleanup_expired_message_ids(days)
+        return event.plain_result(f"已清理 {cleaned_count} 个超过 {days} 天的消息ID喵～")
+        
     # tr 简化命令组处理方法
     async def handle_tr_add_monitor(self, event: AstrMessageEvent, task_id: str = None):
         """将当前会话添加到监听列表喵～"""
@@ -550,12 +624,125 @@ class CommandHandlers:
 
 · /tr untarget <任务ID> - 将当前会话从转发目标移除
 
+· /tr adduser <任务ID> <QQ号> - 添加指定用户到当前群聊的监听列表(仅群聊可用)
+
+· /tr removeuser <任务ID> <QQ号> - 从当前群聊的监听列表中移除指定用户(仅群聊可用)
+
 · /tr list - 列出所有转发任务
 
 · /tr help - 显示此帮助
 
-这些简化指令不需要手动输入会话ID，会自动使用当前会话的ID喵～
+会话相关指令不需要手动输入会话ID，会自动使用当前会话的ID喵～
 
 如果需要更多完整功能，请使用 /turnrig help 查看完整指令列表喵～"""
         # 确保使用plain_result以保留换行符
         return event.plain_result(help_text)
+
+    async def handle_add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
+        """添加群聊内特定用户到监听列表喵～"""
+        if not event.is_admin():
+            return event.plain_result("只有管理员才能添加群内特定用户监听喵～")
+            
+        if not task_id or not group_id or not user_id:
+            return event.plain_result("请提供完整的参数喵～\n正确格式：/turnrig adduser <任务ID> <群号> <QQ号>")
+            
+        task = self.plugin.get_task_by_id(task_id)
+        if not task:
+            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        
+        # 确保group_id和user_id是字符串
+        group_id_str = str(group_id)
+        user_id_str = str(user_id)
+        
+        # 初始化monitored_users_in_groups字段
+        if 'monitored_users_in_groups' not in task:
+            task['monitored_users_in_groups'] = {}
+            
+        # 初始化该群的监听用户列表
+        if group_id_str not in task['monitored_users_in_groups']:
+            task['monitored_users_in_groups'][group_id_str] = []
+            
+        # 检查用户是否已经在监听列表中
+        if user_id_str in task['monitored_users_in_groups'][group_id_str]:
+            return event.plain_result(f"用户 {user_id_str} 已经在群 {group_id_str} 的监听列表中了喵～")
+            
+        # 添加用户到监听列表
+        task['monitored_users_in_groups'][group_id_str].append(user_id_str)
+        self.plugin.save_config_file()
+        
+        return event.plain_result(f"已将用户 {user_id_str} 添加到任务 [{task.get('name')}] 在群 {group_id_str} 的监听列表喵～")
+
+    async def handle_remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
+        """从监听列表移除群聊内特定用户喵～"""
+        if not event.is_admin():
+            return event.plain_result("只有管理员才能移除群内特定用户监听喵～")
+            
+        if not task_id or not group_id or not user_id:
+            return event.plain_result("请提供完整的参数喵～\n正确格式：/turnrig removeuser <任务ID> <群号> <QQ号>")
+            
+        task = self.plugin.get_task_by_id(task_id)
+        if not task:
+            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        
+        # 确保group_id和user_id是字符串
+        group_id_str = str(group_id)
+        user_id_str = str(user_id)
+        
+        # 检查该群的监听用户列表是否存在
+        if 'monitored_users_in_groups' not in task or group_id_str not in task['monitored_users_in_groups']:
+            return event.plain_result(f"任务 [{task.get('name')}] 在群 {group_id_str} 没有设置特定用户监听喵～")
+            
+        # 检查用户是否在监听列表中
+        if user_id_str not in task['monitored_users_in_groups'][group_id_str]:
+            return event.plain_result(f"用户 {user_id_str} 不在任务 [{task.get('name')}] 群 {group_id_str} 的监听列表中喵～")
+            
+        # 从监听列表移除用户
+        task['monitored_users_in_groups'][group_id_str].remove(user_id_str)
+        
+        # 如果列表为空，可以考虑删除该群的记录
+        if not task['monitored_users_in_groups'][group_id_str]:
+            del task['monitored_users_in_groups'][group_id_str]
+            
+        self.plugin.save_config_file()
+        
+        return event.plain_result(f"已将用户 {user_id_str} 从任务 [{task.get('name')}] 群 {group_id_str} 的监听列表中移除喵～")
+
+    async def handle_tr_add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, user_id: str = None):
+        """将指定用户添加到当前群聊的监听列表喵～"""
+        if not event.is_admin():
+            return event.plain_result("只有管理员才能添加群内特定用户监听喵～")
+            
+        if not task_id or not user_id:
+            return event.plain_result("请提供完整的参数喵～\n正确格式：/tr adduser <任务ID> <QQ号>")
+            
+        # 检查当前会话是否为群聊
+        if "GroupMessage" not in event.unified_msg_origin:
+            return event.plain_result("此命令只能在群聊中使用喵～")
+            
+        # 从会话ID中提取群号
+        group_id = event.get_group_id()
+        if not group_id:
+            return event.plain_result("无法获取当前群号，请使用完整命令 /turnrig adduser 喵～")
+            
+        # 调用完整版命令处理方法
+        return await self.handle_add_user_in_group(event, task_id, group_id, user_id)
+            
+    async def handle_tr_remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, user_id: str = None):
+        """将指定用户从当前群聊的监听列表移除喵～"""
+        if not event.is_admin():
+            return event.plain_result("只有管理员才能移除群内特定用户监听喵～")
+            
+        if not task_id or not user_id:
+            return event.plain_result("请提供完整的参数喵～\n正确格式：/tr removeuser <任务ID> <QQ号>")
+            
+        # 检查当前会话是否为群聊
+        if "GroupMessage" not in event.unified_msg_origin:
+            return event.plain_result("此命令只能在群聊中使用喵～")
+            
+        # 从会话ID中提取群号
+        group_id = event.get_group_id()
+        if not group_id:
+            return event.plain_result("无法获取当前群号，请使用完整命令 /turnrig removeuser 喵～")
+            
+        # 调用完整版命令处理方法
+        return await self.handle_remove_user_from_group(event, task_id, group_id, user_id)

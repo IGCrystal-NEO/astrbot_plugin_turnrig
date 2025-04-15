@@ -22,6 +22,26 @@ class MessageListener:
     async def on_all_message(self, event: AstrMessageEvent):
         """监听所有消息并进行处理喵～"""
         try:
+            # 获取消息ID，避免重复处理
+            message_id = event.message_obj.message_id
+            
+            # 检查消息是否已经处理过
+            if self._is_message_processed(message_id):
+                logger.debug(f"消息 {message_id} 已经处理过，跳过")
+                return
+            
+            # 检查是否为插件指令，如果是则跳过监听
+            plain_text = event.message_str
+            if plain_text:
+                # 检查是否为插件的指令前缀
+                if plain_text.startswith('/tr ') or plain_text.startswith('/turnrig ') or plain_text == '/tr' or plain_text == '/turnrig':
+                    logger.debug(f"消息 {message_id} 是插件指令，跳过监听")
+                    return
+                # 检查是否为转发指令
+                if plain_text.startswith('/fn ') or plain_text == '/fn':
+                    logger.debug(f"消息 {message_id} 是转发指令，跳过监听")
+                    return
+            
             logger.info(f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}")
             # 获取消息平台名称，判断是否为 aiocqhttp
             platform_name = event.get_platform_name()
@@ -75,6 +95,7 @@ class MessageListener:
             
             # 处理每个任务
             task_matched = False
+            matched_task_ids = []
             for task in enabled_tasks:
                 # 确保任务有ID，避免None值
                 task_id = task.get('id')
@@ -97,6 +118,7 @@ class MessageListener:
                     continue
                 
                 task_matched = True
+                matched_task_ids.append(task_id)
                 logger.info(f"任务 [{task.get('name', '未命名')}](ID: {task_id}) 匹配当前消息！")
                 
                 # 初始化缓存
@@ -112,8 +134,6 @@ class MessageListener:
                 sender_name = event.get_sender_name() or "未知用户"
                 sender_id = event.get_sender_id() or "0"
                 timestamp = int(time.time())
-                # 安全获取message_id，确保有默认值
-                message_id = getattr(event.message_obj, "message_id", "unknown") if hasattr(event, "message_obj") else "unknown"
                 
                 # 开始诊断：打印完整的原始消息对象
                 logger.debug(f"详细消息对象: {event.message_obj.__dict__ if hasattr(event.message_obj, '__dict__') else 'No __dict__'}")
@@ -195,11 +215,53 @@ class MessageListener:
             
             if not task_matched:
                 logger.debug("没有任务匹配当前消息，消息未被缓存")
+            
+            # 标记消息为已处理，按任务ID分组存储
+            self._mark_message_processed(message_id, matched_task_ids)
         
         except Exception as e:
             logger.error(f"处理消息时出错喵: {e}")
             import traceback
             logger.error(traceback.format_exc())
+
+    def _is_message_processed(self, message_id: str) -> bool:
+        """检查消息是否已经处理过，使用新的按任务分组的结构"""
+        # 检查所有任务的processed_message_ids
+        for key in self.plugin.config:
+            if key.startswith('processed_message_ids_'):
+                message_ids = self.plugin.config[key]
+                for msg in message_ids:
+                    if isinstance(msg, dict) and msg.get('id') == message_id:
+                        return True
+                    elif msg == message_id:  # 兼容旧格式
+                        return True
+        return False
+    
+    def _mark_message_processed(self, message_id: str, task_ids: List[str]):
+        """将消息标记为已处理，使用新的按任务分组的结构
+        
+        Args:
+            message_id: 消息ID
+            task_ids: 匹配到的任务ID列表
+        """
+        timestamp = int(time.time())
+        
+        # 为每个匹配的任务添加消息ID
+        for task_id in task_ids:
+            key = f'processed_message_ids_{task_id}'
+            
+            # 如果键不存在，创建一个空列表
+            if key not in self.plugin.config:
+                self.plugin.config[key] = []
+                
+            # 添加消息ID和时间戳
+            self.plugin.config[key].append({
+                'id': message_id,
+                'timestamp': timestamp
+            })
+        
+        # 保存配置
+        self.plugin.save_config_file()
 
     def _should_monitor_session(self, task: Dict, event: AstrMessageEvent) -> bool:
         """判断是否应该监听此会话"""
@@ -210,6 +272,14 @@ class MessageListener:
         logger.debug(f"当前任务监听的群组: {task.get('monitor_groups', [])}")
         logger.debug(f"当前任务监听的私聊用户: {task.get('monitor_private_users', [])}")
         logger.debug(f"当前任务直接监听的会话: {task.get('monitor_sessions', [])}")
+        
+        # 新增：检查群是否在monitored_users_in_groups中配置了特定用户监听
+        if event.get_message_type().name == "GROUP_MESSAGE":
+            group_id = event.get_group_id()
+            group_id_str = str(group_id) if group_id else ""
+            if group_id_str and group_id_str in task.get('monitored_users_in_groups', {}):
+                logger.debug(f"群 {group_id} 已配置特定用户监听，应监听此会话")
+                return True
         
         # 最重要的修复：直接检查会话ID是否存在于任务的monitor_groups中
         if session_id in task.get('monitor_groups', []):
@@ -283,7 +353,7 @@ class MessageListener:
                     logger.debug(f"会话ID格式 {fmt} 在私聊监听列表中，应监听此会话")
                     return True
         
-        # 最后检查完整的session_id是否直接匹配
+        # 最后再检查一次完整的session_id是否直接匹配
         if session_id in task.get('monitor_sessions', []):
             logger.debug(f"会话ID {session_id} 直接匹配监听列表，应监听此会话")
             return True
@@ -309,6 +379,9 @@ class MessageListener:
         group_id_str = str(group_id)
         monitored_users = task.get('monitored_users_in_groups', {}).get(group_id_str, [])
         
+        # 增加日志，显示该群中监听的用户列表
+        logger.debug(f"群 {group_id} 中监听的用户列表: {monitored_users}")
+        
         # 如果没有指定用户列表，则监听所有人
         if not monitored_users:
             logger.debug(f"群 {group_id} 没有指定特定监听用户，监听所有用户")
@@ -317,7 +390,17 @@ class MessageListener:
         # 检查发送者是否在监听列表中
         sender_id = event.get_sender_id()
         sender_id_str = str(sender_id)
-        is_monitored = any(str(u) == sender_id_str for u in monitored_users)
+        
+        # 增加日志，显示当前消息发送者ID
+        logger.debug(f"检查发送者 {sender_id_str} 是否在监听列表中")
+        
+        is_monitored = False
+        for user_id in monitored_users:
+            user_id_str = str(user_id)
+            if user_id_str == sender_id_str:
+                is_monitored = True
+                logger.debug(f"匹配成功: 用户ID {sender_id_str} 与监听列表中的 {user_id_str} 匹配")
+                break
         
         if is_monitored:
             logger.debug(f"用户 {sender_id} 在群 {group_id} 的监听列表中，应监听")

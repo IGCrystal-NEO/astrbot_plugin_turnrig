@@ -1,6 +1,7 @@
 import os
 import json
 from astrbot.api import logger
+from typing import Dict
 
 class ConfigManager:
     def __init__(self, data_dir):
@@ -20,11 +21,19 @@ class ConfigManager:
         return None
     
     def save_config(self, config):
-        """将配置保存到文件"""
+        """保存配置到文件"""
         try:
-            with open(self.config_path, "w", encoding="utf-8") as f:
+            # 备份当前配置文件（如果存在）
+            if os.path.exists(self.config_path):
+                backup_path = f"{self.config_path}.bak"
+                import shutil
+                shutil.copy2(self.config_path, backup_path)
+            
+            # 保存新配置
+            with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
-            logger.debug(f"已将配置保存到 {self.config_path}")
+            
+            logger.info(f"配置已保存到 {self.config_path}")
             return True
         except Exception as e:
             logger.error(f"保存配置文件失败: {e}")
@@ -52,12 +61,28 @@ class ConfigManager:
             logger.error(f"加载消息缓存失败: {e}")
             return {}
     
-    def save_message_cache(self, message_cache):
+    def save_message_cache(self, message_cache: Dict):
         """保存消息缓存"""
         try:
-            with open(self.cache_path, "w", encoding="utf-8") as f:
-                json.dump(message_cache, f, ensure_ascii=False, indent=2)
-            logger.debug(f"已将消息缓存保存到 {self.cache_path}")
+            # 获取所有有效的任务ID
+            valid_task_ids = set()
+            config = self.load_config()
+            if config and 'tasks' in config:
+                valid_task_ids = {str(task.get('id', '')) for task in config['tasks']}
+            
+            # 清理缓存中不存在的任务
+            cleaned_cache = {}
+            for task_id, sessions in message_cache.items():
+                if str(task_id) in valid_task_ids:
+                    cleaned_cache[task_id] = sessions
+                else:
+                    logger.info(f"从缓存中移除已删除的任务 {task_id}")
+            
+            # 保存清理后的缓存
+            cache_path = os.path.join(self.data_dir, "message_cache.json")
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(cleaned_cache, f, ensure_ascii=False, indent=4)
+            logger.debug(f"已将消息缓存保存到 {cache_path}")
             return True
         except Exception as e:
             logger.error(f"保存消息缓存失败: {e}")

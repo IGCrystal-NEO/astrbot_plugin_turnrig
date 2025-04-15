@@ -22,6 +22,15 @@ class TurnRigPlugin(Star):
         self.data_dir = os.path.join("data", "plugins_data", "astrbot_plugin_turnrig")
         os.makedirs(self.data_dir, exist_ok=True)
         
+        # 创建临时目录用于存储图片
+        self.temp_dir = os.path.join(self.data_dir, "temp")
+        os.makedirs(self.temp_dir, exist_ok=True)
+        
+        # 确保下载助手可以访问临时目录
+        from .messaging.forward.download_helper import DownloadHelper
+        self.download_helper = DownloadHelper(self.temp_dir)
+        self.download_helper.plugin = self  # 添加对插件的引用，用于访问配置
+
         # 创建配置管理器
         self.config_manager = ConfigManager(self.data_dir)
         
@@ -77,6 +86,9 @@ class TurnRigPlugin(Star):
         # 消息缓存
         self.message_cache = self.config_manager.load_message_cache() or {}
         
+        # 清理缓存中的无效任务
+        self._cleanup_invalid_tasks_in_cache()
+        
         # 保存一次配置确保文件存在
         self.save_config_file()
         logger.info(f"转发侦听器插件初始化完成，数据存储在 {self.data_dir} 目录下")
@@ -100,6 +112,28 @@ class TurnRigPlugin(Star):
         
         # 添加一个新的循环监听任务
         asyncio.create_task(self.message_monitor_loop())
+        
+        # 添加消息ID清理任务
+        self.cleanup_task = None
+        self.start_cleanup_task()
+        
+        # 添加清理临时文件任务
+        asyncio.create_task(self.cleanup_temp_files())
+    
+    def _cleanup_invalid_tasks_in_cache(self):
+        """清理缓存中不存在的任务"""
+        valid_task_ids = {str(task.get('id', '')) for task in self.config.get('tasks', [])}
+        invalid_tasks = []
+        
+        # 检查消息缓存中的任务
+        for task_id in list(self.message_cache.keys()):
+            if str(task_id) not in valid_task_ids:
+                invalid_tasks.append(task_id)
+                del self.message_cache[task_id]
+        
+        if invalid_tasks:
+            logger.info(f"已清理 {len(invalid_tasks)} 个无效任务的缓存: {', '.join(invalid_tasks)}")
+            self.save_message_cache()
     
     def save_config_file(self):
         """将配置保存到文件"""
@@ -191,6 +225,97 @@ class TurnRigPlugin(Star):
                 pass
         return max_id
     
+    # 添加新方法，用于启动定期清理任务
+    def start_cleanup_task(self):
+        """启动定期清理过期消息ID的任务"""
+        self.cleanup_task = asyncio.create_task(self.periodic_message_ids_cleanup())
+        logger.debug("已启动消息ID定期清理任务")
+    
+    async def periodic_message_ids_cleanup(self):
+        """定期清理过期的processed_message_ids"""
+        while True:
+            try:
+                # 默认清理7天前的消息ID
+                cleaned_count = self.cleanup_expired_message_ids(7)
+                if cleaned_count > 0:
+                    logger.info(f"定期清理: 已删除 {cleaned_count} 个过期消息ID")
+            except Exception as e:
+                logger.error(f"清理过期消息ID时出错: {e}")
+                
+            # 每天运行一次
+            await asyncio.sleep(86400)  # 24小时 = 86400秒
+    
+    def cleanup_expired_message_ids(self, days: int = 7) -> int:
+        """清理超过指定天数的processed_message_ids
+        
+        Args:
+            days: 清理超过多少天的消息ID
+            
+        Returns:
+            int: 清理的消息ID数量
+        """
+        current_time = int(time.time())
+        cutoff_time = current_time - (days * 86400)  # days转换为秒
+        total_cleaned = 0
+        
+        # 查找所有任务的processed_message_ids
+        for key in list(self.config.keys()):
+            if key.startswith('processed_message_ids_'):
+                if not isinstance(self.config[key], list):
+                    continue
+                    
+                original_count = len(self.config[key])
+                # 过滤掉过期的消息ID
+                self.config[key] = [
+                    msg for msg in self.config[key]
+                    if isinstance(msg, dict) and msg.get('timestamp', 0) > cutoff_time
+                ]
+                
+                cleaned_count = original_count - len(self.config[key])
+                total_cleaned += cleaned_count
+                
+                if cleaned_count > 0:
+                    logger.debug(f"从 {key} 中清理了 {cleaned_count} 个消息ID")
+        
+        # 如果有清理，保存配置
+        if total_cleaned > 0:
+            self.save_config_file()
+            
+        return total_cleaned
+    
+    async def cleanup_temp_files(self):
+        """定期清理临时文件夹中的文件"""
+        while True:
+            try:
+                await asyncio.sleep(3600)  # 每小时执行一次
+                
+                if not os.path.exists(self.temp_dir):
+                    continue
+                    
+                current_time = time.time()
+                deleted = 0
+                
+                for filename in os.listdir(self.temp_dir):
+                    file_path = os.path.join(self.temp_dir, filename)
+                    
+                    # 跳过目录
+                    if os.path.isdir(file_path):
+                        continue
+                        
+                    # 24小时前的文件将被删除
+                    if os.path.getmtime(file_path) < current_time - 86400:
+                        try:
+                            os.remove(file_path)
+                            deleted += 1
+                        except Exception as e:
+                            logger.error(f"删除临时文件失败: {file_path}, {e}")
+                
+                if deleted > 0:
+                    logger.info(f"已清理 {deleted} 个临时文件")
+                    
+            except Exception as e:
+                logger.error(f"清理临时文件任务出错: {e}")
+    
     async def terminate(self):
         """插件被卸载/停用时调用"""
         # 保存消息缓存和配置
@@ -201,6 +326,15 @@ class TurnRigPlugin(Star):
         if hasattr(self, 'forward_manager') and hasattr(self.forward_manager, 'save_failed_messages_cache'):
             self.forward_manager.save_failed_messages_cache()
             
+        # 取消清理任务
+        if self.cleanup_task:
+            self.cleanup_task.cancel()
+            try:
+                await self.cleanup_task
+            except asyncio.CancelledError:
+                pass
+            logger.debug("已取消消息ID清理任务")
+        
         logger.debug("插件已终止，数据已保存")
         
     # 消息监听器，委托给MessageListener类处理
@@ -306,6 +440,24 @@ class TurnRigPlugin(Star):
         """手动触发转发"""
         result = await self.command_handlers.handle_manual_forward(event, task_id, session_id)
         yield result
+
+    @turnrig.command("cleanup")
+    async def cleanup_ids(self, event: AstrMessageEvent, days: int = 7):
+        """清理过期的消息ID"""
+        result = await self.command_handlers.handle_cleanup_ids(event, days)
+        yield result
+
+    @turnrig.command("adduser")
+    async def add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
+        """添加群聊内特定用户到监听列表"""
+        result = await self.command_handlers.handle_add_user_in_group(event, task_id, group_id, user_id)
+        yield result
+        
+    @turnrig.command("removeuser")
+    async def remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
+        """从监听列表移除群聊内特定用户"""
+        result = await self.command_handlers.handle_remove_user_from_group(event, task_id, group_id, user_id)
+        yield result
         
     @turnrig.command("help")
     async def turnrig_help(self, event: AstrMessageEvent):
@@ -347,6 +499,18 @@ class TurnRigPlugin(Star):
     async def tr_list_tasks(self, event: AstrMessageEvent):
         """列出所有转发任务"""
         result = await self.command_handlers.handle_tr_list_tasks(event)
+        yield result
+        
+    @tr.command("adduser")
+    async def tr_add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, user_id: str = None):
+        """将指定用户添加到当前群聊的监听列表"""
+        result = await self.command_handlers.handle_tr_add_user_in_group(event, task_id, user_id)
+        yield result
+        
+    @tr.command("removeuser")
+    async def tr_remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, user_id: str = None):
+        """将指定用户从当前群聊的监听列表移除"""
+        result = await self.command_handlers.handle_tr_remove_user_from_group(event, task_id, user_id)
         yield result
         
     @tr.command("help")

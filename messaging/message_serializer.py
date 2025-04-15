@@ -1,12 +1,21 @@
 import os
+import base64
+import json
+from typing import List, Dict, Any, Union
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
 
-def serialize_message(message):
-    """将消息序列化以便存储喵～"""
+def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str, Any]]:
+    """将消息组件列表序列化为可存储的格式
+    
+    Args:
+        message: 消息组件列表
+        
+    Returns:
+        List[Dict[str, Any]]: 可存储的序列化消息
+    """
     serialized = []
     
-    # 处理空消息的情况
     if not message:
         logger.warning("尝试序列化空消息")
         return [{"type": "plain", "text": "[空消息]"}]
@@ -14,14 +23,12 @@ def serialize_message(message):
     for msg in message:
         try:
             if isinstance(msg, Comp.Plain):
-                # 确保文本非空
                 text = getattr(msg, "text", "") or ""
-                if text.strip():  # 只有当文本非空且非纯空白时才添加
+                if text.strip():
                     serialized.append({"type": "plain", "text": text})
                 else:
                     logger.debug("跳过空Plain消息")
             elif isinstance(msg, Comp.Image):
-                # 确保至少有一个图片属性非空
                 url = getattr(msg, "url", "") or ""
                 file = getattr(msg, "file", "") or ""
                 base64 = getattr(msg, "base64", "") or ""
@@ -61,7 +68,6 @@ def serialize_message(message):
                 node_content = []
                 if hasattr(msg, "content"):
                     if isinstance(msg.content, list):
-                        # 如果内容是列表，递归序列化
                         node_content = serialize_message(msg.content)
                     elif isinstance(msg.content, str):
                         node_content = [{"type": "plain", "text": msg.content}]
@@ -96,19 +102,16 @@ def serialize_message(message):
                     "cover": getattr(msg, "cover", "")
                 })
             else:
-                # 默认类型，尽可能保存所有属性
                 data = {"type": "unknown"}
                 if hasattr(msg, "type"):
                     data["original_type"] = msg.type
                 else:
                     data["original_type"] = str(type(msg))
                     
-                # 尝试保存消息对象的所有属性
                 for attr_name in dir(msg):
                     if not attr_name.startswith("_") and not callable(getattr(msg, attr_name)):
                         try:
                             value = getattr(msg, attr_name)
-                            # 只保存简单类型的属性
                             if isinstance(value, (str, int, float, bool)) or value is None:
                                 data[attr_name] = value
                         except:
@@ -116,44 +119,45 @@ def serialize_message(message):
                 serialized.append(data)
         except Exception as e:
             logger.error(f"序列化消息组件时出错: {e}, 组件类型: {type(msg).__name__}")
-            # 添加错误信息而不是跳过，确保消息链的完整性
             serialized.append({"type": "error", "error": str(e), "component_type": str(type(msg).__name__)})
 
-    # 如果序列化后仍然为空，添加一个提示信息
     if not serialized:
         logger.warning("序列化后消息为空，添加默认消息")
         serialized.append({"type": "plain", "text": "[消息内容无法识别]"})
         
     return serialized
 
-def deserialize_message(serialized):
-    """将序列化的消息转换回消息组件喵～"""
+def deserialize_message(serialized: List[Dict]) -> List[Comp.BaseMessageComponent]:
+    """将序列化的消息反序列化为消息组件列表
+    
+    Args:
+        serialized: 序列化的消息列表
+        
+    Returns:
+        List[Comp.BaseMessageComponent]: 消息组件列表
+    """
     components = []
     for msg in serialized:
         try:
             if msg["type"] == "plain":
                 components.append(Comp.Plain(text=msg["text"]))
             elif msg["type"] == "image":
-                if msg.get("file"):
-                    # 优先使用本地文件
-                    if os.path.exists(msg["file"]):
-                        components.append(Comp.Image.fromFileSystem(msg["file"]))
-                    else:
-                        # 文件不存在，尝试使用URL
-                        components.append(Comp.Image.fromURL(msg.get("url", "")))
-                elif msg.get("base64"):
-                    # 使用base64
+                if msg.get("base64"):
                     components.append(Comp.Image(base64=msg["base64"]))
+                elif msg.get("file") and os.path.exists(msg["file"]):
+                    components.append(Comp.Image.fromFileSystem(msg["file"]))
                 elif msg.get("url"):
-                    # 使用URL
                     components.append(Comp.Image.fromURL(msg["url"]))
+                else:
+                    logger.warning(f"图片缺少有效的源: {msg}")
+                    components.append(Comp.Plain(text="[图片无法显示]"))
             elif msg["type"] == "at":
                 components.append(Comp.At(qq=msg["qq"], name=msg.get("name", "")))
             elif msg["type"] == "record":
                 if msg.get("file") and os.path.exists(msg["file"]):
                     components.append(Comp.Record(file=msg["file"]))
                 else:
-                    components.append(Comp.Record(url=msg["url", ""]))
+                    components.append(Comp.Record(url=msg.get("url", "")))
             elif msg["type"] == "file":
                 components.append(Comp.File(
                     url=msg.get("url", ""),
@@ -176,10 +180,8 @@ def deserialize_message(serialized):
                 else:
                     components.append(Comp.Video.fromURL(msg["url"]))
             elif msg["type"] == "node":
-                # 处理Node的内容
                 node_content = []
                 if msg.get("content"):
-                    # 如果内容是序列化的消息列表，递归反序列化
                     node_content = deserialize_message(msg["content"])
                 
                 components.append(Comp.Node(
@@ -189,7 +191,6 @@ def deserialize_message(serialized):
                     time=msg.get("time", 0)
                 ))
             elif msg["type"] == "nodes":
-                # 处理Nodes
                 nodes_list = []
                 for node_data in msg.get("nodes", []):
                     node_content = []
@@ -203,9 +204,44 @@ def deserialize_message(serialized):
                         time=node_data.get("time", 0)
                     )
                     nodes_list.append(node)
-                components.append(Comp.Nodes(nodes=nodes_list))  # 修复这里，返回 Comp.Nodes 对象
+                components.append(Comp.Nodes(nodes=nodes_list))
         except Exception as e:
             logger.error(f"反序列化消息组件失败: {e}, 消息数据: {msg}")
-            # 添加一个文本消息表明有错误
             components.append(Comp.Plain(text=f"[消息组件解析错误: {msg.get('type', '未知类型')}]"))
     return components
+
+def serialize_message_compressed(message: List[Comp.BaseMessageComponent]) -> str:
+    """将消息序列化并压缩为base64字符串，减少存储空间
+    
+    Args:
+        message: 消息组件列表
+        
+    Returns:
+        str: base64编码的压缩消息数据
+    """
+    import zlib
+    
+    serialized_data = serialize_message(message)
+    json_data = json.dumps(serialized_data, ensure_ascii=False)
+    compressed = zlib.compress(json_data.encode('utf-8'))
+    return base64.b64encode(compressed).decode('utf-8')
+
+def deserialize_message_compressed(compressed_data: str) -> List[Comp.BaseMessageComponent]:
+    """从压缩的base64字符串反序列化消息
+    
+    Args:
+        compressed_data: 压缩的base64字符串
+        
+    Returns:
+        List[Comp.BaseMessageComponent]: 消息组件列表
+    """
+    import zlib
+    
+    try:
+        compressed_bytes = base64.b64decode(compressed_data)
+        json_data = zlib.decompress(compressed_bytes).decode('utf-8')
+        serialized_data = json.loads(json_data)
+        return deserialize_message(serialized_data)
+    except Exception as e:
+        logger.error(f"解压缩消息失败: {e}")
+        return [Comp.Plain(text="[消息解压缩失败]")]
