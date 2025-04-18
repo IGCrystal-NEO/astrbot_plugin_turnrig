@@ -13,7 +13,7 @@ from .commands.command_handlers import CommandHandlers
 from .messaging.forward_manager import ForwardManager
 from .messaging.message_listener import MessageListener
 
-@register("turnrig", "IGCrystal", "监听并转发消息的插件", "1.0.0", "https://github.com/IGCrystal/astrbot_plugin_turnrig")
+@register("astrbot_plugin_turnrig", "IGCrystal", "监听并转发消息的插件", "1.0.0", "https://github.com/IGCrystal/astrbot_plugin_turnrig")
 class TurnRigPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
