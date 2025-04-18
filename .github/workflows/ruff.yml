@@ -1,10 +1,42 @@
-name: Ruff
-on: [push, pull_request]
+name: Lint with Ruff
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
 jobs:
-  ruff:
+  lint:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1      
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          args: 'format'
+          ref: ${{ github.head_ref }}  # Checkout the PR branch
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run Ruff (Check Only)
+        run: |
+          ruff check . --output-format=github
+
+      - name: Run Ruff (Fix Issues)
+        run: |
+          ruff check --fix .
+
+      - name: Commit and push changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git diff --quiet || (git add -A && git commit -m "🤖 Auto-fix linting issues with Ruff" && git push)
