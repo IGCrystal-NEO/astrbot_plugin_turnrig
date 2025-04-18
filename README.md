@@ -1,6 +1,6 @@
 # 转发侦听插件 (TurnRig) 喵～
 
-> 一个消息监听与转发插件，支持多种平台消息类型喵～
+> 一个消息监听与转发插件，支持多种消息类型喵～
 
 ## ✨ 功能特点喵～
 
@@ -144,6 +144,6 @@
 
 如果使用过程中遇到任何问题，可以通过以下方式联系作者喵～：
 
-- GitHub: [IGCrystal/astrbot_plugin_turnrig](https://github.com/IGCrystal/astrbot_plugin_turnrig)
+- GitHub: [WentUrc/astrbot_plugin_turnrig](https://github.com/WentUrc/astrbot_plugin_turnrig)
 
 感谢使用转发侦听插件喵～！希望它能为你带来便利喵～❤️
