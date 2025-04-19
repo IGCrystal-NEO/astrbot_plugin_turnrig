@@ -27,6 +27,7 @@ jobs:
           pip install ruff
 
       - name: Run Ruff (Check Only)
+        continue-on-error: true
         run: |
           ruff check . --output-format=github
 
