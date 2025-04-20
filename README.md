@@ -1,5 +1,7 @@
 # 转发侦听插件 (TurnRig) 喵～
 
+<img src="https://count.getloli.com/@:astrbot_plugin_turnig" alt=":astrbot_plugin_turnig" width="100%" />
+
 > 一个消息监听与转发插件，支持多种消息类型喵～
 
 ![](./img/diff.jpg)
