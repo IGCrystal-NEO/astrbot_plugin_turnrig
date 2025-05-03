@@ -47,6 +47,18 @@ class CommandHandlers:
     
     def _ensure_full_session_id(self, session_id):
         """确保会话ID是完整格式喵～"""
+        if not session_id:
+            return session_id
+            
+        # 处理单独的"群聊"或"私聊"关键词
+        if session_id == "群聊" or session_id == "私聊":
+            logger.warning(f"检测到单独的'{session_id}'关键词，需要提供完整的会话ID格式：{session_id} <ID>")
+            return session_id
+        
+        # 检查session_id是否含有无效空格
+        session_id = session_id.strip()
+        
+        # 正常处理流程
         normalized_id = normalize_session_id(session_id)
         
         # 检查是否包含两个冒号，表示是完整会话ID
@@ -55,6 +67,69 @@ class CommandHandlers:
         else:
             logger.warning(f"会话ID '{session_id}' 不是有效的完整会话ID格式，已转换为 '{normalized_id}' 但可能仍然无效")
             return normalized_id
+
+    async def _check_admin(self, event: AstrMessageEvent, error_msg: str = "只有管理员才能执行此操作喵～"):
+        """检查用户是否为管理员"""
+        if not event.is_admin():
+            await event.plain_result(error_msg)
+            return False
+        return True
+    
+    def _get_validated_task(self, event: AstrMessageEvent, task_id: str, need_reply: bool = True):
+        """获取并验证任务是否存在"""
+        if not task_id:
+            if need_reply:
+                return None, "请提供任务ID喵～"
+            return None, None
+            
+        task = self.plugin.get_task_by_id(task_id)
+        if not task:
+            if need_reply:
+                return None, f"未找到ID为 {task_id} 的任务喵～"
+            return None, None
+            
+        return task, None
+
+    def _extract_session_id(self, event: AstrMessageEvent, cmd_text: str = None, chat_type: str = None, chat_id: str = None, args=None):
+        """从命令参数中提取会话ID"""
+        # 获取命令文本
+        if not cmd_text:
+            cmd_text = event.message_str
+            if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+                cmd_text = str(event.message_obj.raw_message)
+        
+        # 初始化会话ID
+        session_id = None
+        
+        # 如果chat_type和chat_id都存在，组合成会话ID
+        if chat_type in ["群聊", "私聊"] and chat_id:
+            session_id = f"{chat_type} {chat_id}"
+            if args:  # 如果还有额外参数
+                session_id = f"{session_id} {' '.join(args)}"
+            logger.info(f"从参数中检测到会话ID: {session_id}")
+        
+        # 如果只有chat_type，可能是完整的会话ID已经作为一个参数传入
+        elif chat_type and not chat_id:
+            session_id = chat_type
+            logger.info(f"可能的完整会话ID: {session_id}")
+        
+        # 如果无法从参数中获取完整的会话ID，尝试从命令文本中解析
+        if not session_id or session_id in ["群聊", "私聊"]:
+            parts = cmd_text.split()
+            # 查找"群聊"或"私聊"关键词
+            for i, part in enumerate(parts):
+                if part in ["群聊", "私聊"] and i + 1 < len(parts):
+                    session_id = f"{part} {parts[i+1]}"
+                    logger.info(f"从命令文本中提取会话ID: {session_id}")
+                    break
+        
+        # 如果提取到会话ID，进行标准化
+        if session_id:
+            full_session_id = self._ensure_full_session_id(session_id)
+            logger.info(f"标准化会话ID: {session_id} -> {full_session_id}")
+            return full_session_id
+        
+        return None
     
     # turnrig 命令组处理方法
     async def handle_list_tasks(self, event: AstrMessageEvent):
@@ -112,8 +187,9 @@ class CommandHandlers:
 
     async def handle_create_task(self, event: AstrMessageEvent, task_name: str = None):
         """创建新的转发任务喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能创建转发任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能创建转发任务喵～"):
+            return
             
         if not task_name:
             task_name = f"新任务_{len(self.plugin.config['tasks']) + 1}"
@@ -143,8 +219,8 @@ class CommandHandlers:
     async def handle_delete_task(self, event: AstrMessageEvent, task_id: str = None):
         """处理删除任务的指令"""
         # 管理员权限检查
-        if event.role != "admin":
-            return event.plain_result("只有管理员可以删除任务喵～")
+        if not await self._check_admin(event, "只有管理员可以删除任务喵～"):
+            return
         
         if not task_id:
             return event.plain_result("请提供要删除的任务ID喵～\n用法: /turnrig delete <任务ID>")
@@ -194,15 +270,14 @@ class CommandHandlers:
 
     async def handle_enable_task(self, event: AstrMessageEvent, task_id: str = None):
         """启用转发任务喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能启用转发任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能启用转发任务喵～"):
+            return
             
-        if not task_id:
-            return event.plain_result("请指定要启用的任务ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
             
         task['enabled'] = True
         self.plugin.save_config_file()
@@ -211,35 +286,40 @@ class CommandHandlers:
 
     async def handle_disable_task(self, event: AstrMessageEvent, task_id: str = None):
         """禁用转发任务喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能禁用转发任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能禁用转发任务喵～"):
+            return
             
-        if not task_id:
-            return event.plain_result("请指定要禁用的任务ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
             
         task['enabled'] = False
         self.plugin.save_config_file()
         
         return event.plain_result(f"已禁用任务 [{task.get('name')}]，ID: {task_id}")
 
-    async def handle_add_monitor(self, event: AstrMessageEvent, task_id: str = None, session_id: str = None):
+    async def handle_add_monitor(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """添加监听源喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能添加监听源喵～")
-            
-        if not task_id or not session_id:
-            return event.plain_result("请同时指定任务ID和要监听的会话ID喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能添加监听源喵～"):
+            return
         
-        # 确保使用完整会话ID格式
-        full_session_id = self._ensure_full_session_id(session_id)
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg + "\n正确格式：/turnrig monitor <任务ID> 群聊 <会话ID>")
+        
+        # 提取会话ID
+        cmd_text = event.message_str
+        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+            cmd_text = str(event.message_obj.raw_message)
+        logger.info(f"处理监听源添加命令: {cmd_text}")
+        
+        full_session_id = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        if not full_session_id:
+            return event.plain_result("请提供要监听的会话ID喵～\n正确格式：/turnrig monitor <任务ID> 群聊 <会话ID>")
         
         # 判断是群聊还是私聊
         if "GroupMessage" in full_session_id:
@@ -257,22 +337,28 @@ class CommandHandlers:
             else:
                 return event.plain_result(f"用户 {full_session_id} 已经在私聊监听列表中了喵～")
         else:
-            return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～")
+            return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～\n正确格式示例：群聊 123456 或 私聊 123456")
 
-    async def handle_remove_monitor(self, event: AstrMessageEvent, task_id: str = None, session_id: str = None):
+    async def handle_remove_monitor(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """删除监听源喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能删除监听源喵～")
-            
-        if not task_id or not session_id:
-            return event.plain_result("请同时指定任务ID和要删除的会话ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能删除监听源喵～"):
+            return
         
-        # 确保使用完整会话ID格式
-        full_session_id = self._ensure_full_session_id(session_id)
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg + "\n正确格式：/turnrig unmonitor <任务ID> 群聊 <会话ID>")
+        
+        # 提取会话ID
+        cmd_text = event.message_str
+        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+            cmd_text = str(event.message_obj.raw_message)
+        logger.info(f"处理监听源删除命令: {cmd_text}")
+        
+        full_session_id = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        if not full_session_id:
+            return event.plain_result("请提供要删除的会话ID喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊 <会话ID>")
         
         # 判断是群聊还是私聊
         if "GroupMessage" in full_session_id:
@@ -292,20 +378,26 @@ class CommandHandlers:
         else:
             return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～")
 
-    async def handle_add_target(self, event: AstrMessageEvent, task_id: str = None, target_session: str = None):
+    async def handle_add_target(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """添加转发目标喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能添加转发目标喵～")
-            
-        if not task_id or not target_session:
-            return event.plain_result("请同时指定任务ID和目标会话ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能添加转发目标喵～"):
+            return
         
-        # 确保使用完整会话ID格式
-        full_target_session = self._ensure_full_session_id(target_session)
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg + "\n正确格式：/turnrig target <任务ID> 群聊 <会话ID>")
+        
+        # 提取会话ID
+        cmd_text = event.message_str
+        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+            cmd_text = str(event.message_obj.raw_message)
+        logger.info(f"处理转发目标添加命令: {cmd_text}")
+        
+        full_target_session = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        if not full_target_session:
+            return event.plain_result("请提供目标会话ID喵～\n正确格式：/turnrig target <任务ID> 群聊 <会话ID>")
         
         if full_target_session not in task.get('target_sessions', []):
             task.setdefault('target_sessions', []).append(full_target_session)
@@ -314,20 +406,26 @@ class CommandHandlers:
         else:
             return event.plain_result(f"会话 {full_target_session} 已经在转发目标列表中了喵～")
 
-    async def handle_remove_target(self, event: AstrMessageEvent, task_id: str = None, target_session: str = None):
+    async def handle_remove_target(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """删除转发目标喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能删除转发目标喵～")
-            
-        if not task_id or not target_session:
-            return event.plain_result("请同时指定任务ID和要删除的目标会话ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能删除转发目标喵～"):
+            return
         
-        # 确保使用完整会话ID格式
-        full_target_session = self._ensure_full_session_id(target_session)
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg + "\n正确格式：/turnrig untarget <任务ID> 群聊 <会话ID>")
+        
+        # 提取会话ID
+        cmd_text = event.message_str
+        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+            cmd_text = str(event.message_obj.raw_message)
+        logger.info(f"处理转发目标删除命令: {cmd_text}")
+        
+        full_target_session = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        if not full_target_session:
+            return event.plain_result("请提供要删除的目标会话ID喵～\n正确格式：/turnrig untarget <任务ID> 群聊 <会话ID>")
         
         if full_target_session in task.get('target_sessions', []):
             task['target_sessions'].remove(full_target_session)
@@ -338,84 +436,93 @@ class CommandHandlers:
 
     async def handle_set_threshold(self, event: AstrMessageEvent, task_id: str = None, threshold: int = None):
         """设置消息阈值喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能设置消息阈值喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能设置消息阈值喵～"):
+            return
+        
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
             
-        if not task_id or threshold is None:
-            return event.plain_result("请同时指定任务ID和消息阈值喵～")
+        if threshold is None:
+            return event.plain_result("请指定消息阈值喵～")
             
         if threshold <= 0:
             return event.plain_result("消息阈值必须大于0喵～")
             
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
-        
         task['max_messages'] = threshold
         self.plugin.save_config_file()
         return event.plain_result(f"已将任务 [{task.get('name')}] 的消息阈值设为 {threshold} 喵～")
 
     async def handle_rename_task(self, event: AstrMessageEvent, task_id: str = None, new_name: str = None):
         """重命名任务喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能重命名任务喵～")
-            
-        if not task_id or not new_name:
-            return event.plain_result("请同时指定任务ID和新名称喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能重命名任务喵～"):
+            return
         
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
+            
+        if not new_name:
+            return event.plain_result("请提供新的任务名称喵～")
+            
         old_name = task.get('name', '未命名')
         task['name'] = new_name
         self.plugin.save_config_file()
         return event.plain_result(f"已将任务 [{old_name}] 重命名为 [{new_name}] 喵～")
 
-    async def handle_manual_forward(self, event: AstrMessageEvent, task_id: str = None, session_id: str = None):
+    async def handle_manual_forward(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """手动触发转发喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能手动触发转发喵～")
-            
-        if not task_id:
-            return event.plain_result("请指定任务ID喵～")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能手动触发转发喵～"):
+            return
+        
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
+        
+        # 获取原始命令文本
+        cmd_text = event.message_str
+        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+            cmd_text = str(event.message_obj.raw_message)
+        logger.info(f"处理手动转发命令: {cmd_text}")
+        
+        # 从命令中提取会话ID（可选）
+        session_id = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
         
         if not session_id:
             # 没有指定会话ID，转发所有会话
             if task_id not in self.plugin.message_cache:
                 return event.plain_result("该任务没有任何缓存消息喵～")
-                
+                    
             if not self.plugin.message_cache[task_id]:
                 return event.plain_result("该任务没有任何缓存消息喵～")
-                
+                    
             session_count = len(self.plugin.message_cache[task_id])
             total_msgs = sum(len(msgs) for msgs in self.plugin.message_cache[task_id].values())
-            
-            result = event.plain_result(f"正在转发任务 [{task.get('name')}] 的 {session_count} 个会话，共 {total_msgs} 条消息喵～")
-            
+                
+            await event.plain_result(f"正在转发任务 [{task.get('name')}] 的 {session_count} 个会话，共 {total_msgs} 条消息喵～")
+                
             for session in list(self.plugin.message_cache[task_id].keys()):
                 await self.plugin.forward_manager.forward_messages(task_id, session)
-                
+                    
             return event.plain_result(f"已完成任务 [{task.get('name')}] 的所有消息转发喵～")
         else:
-            # 确保使用完整会话ID格式
-            full_session_id = self._ensure_full_session_id(session_id)
-            
             # 只转发指定会话
-            if task_id not in self.plugin.message_cache or full_session_id not in self.plugin.message_cache[task_id]:
-                return event.plain_result(f"未找到任务 {task_id} 在会话 {full_session_id} 的缓存消息喵～")
+            if task_id not in self.plugin.message_cache or session_id not in self.plugin.message_cache[task_id]:
+                return event.plain_result(f"未找到任务 {task_id} 在会话 {session_id} 的缓存消息喵～")
+                    
+            msg_count = len(self.plugin.message_cache[task_id][session_id])
+            await event.plain_result(f"正在转发任务 [{task.get('name')}] 在会话 {session_id} 的 {msg_count} 条消息喵～")
                 
-            msg_count = len(self.plugin.message_cache[task_id][full_session_id])
-            result = event.plain_result(f"正在转发任务 [{task.get('name')}] 在会话 {full_session_id} 的 {msg_count} 条消息喵～")
-            
-            await self.plugin.forward_manager.forward_messages(task_id, full_session_id)
-            
-            return event.plain_result(f"已完成任务 [{task.get('name')}] 在会话 {full_session_id} 的消息转发喵～")
-
+            await self.plugin.forward_manager.forward_messages(task_id, session_id)
+                
+            return event.plain_result(f"已完成任务 [{task.get('name')}] 在会话 {session_id} 的消息转发喵～")
+    
     async def handle_turnrig_help(self, event: AstrMessageEvent):
         """显示帮助信息喵～"""
         # 使用三引号字符串确保换行符被正确保留
@@ -640,15 +747,18 @@ class CommandHandlers:
 
     async def handle_add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
         """添加群聊内特定用户到监听列表喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能添加群内特定用户监听喵～")
-            
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能添加群内特定用户监听喵～"):
+            return
+        
+        # 参数检查
         if not task_id or not group_id or not user_id:
             return event.plain_result("请提供完整的参数喵～\n正确格式：/turnrig adduser <任务ID> <群号> <QQ号>")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
         
         # 确保group_id和user_id是字符串
         group_id_str = str(group_id)
@@ -674,15 +784,18 @@ class CommandHandlers:
 
     async def handle_remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
         """从监听列表移除群聊内特定用户喵～"""
-        if not event.is_admin():
-            return event.plain_result("只有管理员才能移除群内特定用户监听喵～")
-            
+        # 权限检查
+        if not await self._check_admin(event, "只有管理员才能移除群内特定用户监听喵～"):
+            return
+        
+        # 参数检查
         if not task_id or not group_id or not user_id:
             return event.plain_result("请提供完整的参数喵～\n正确格式：/turnrig removeuser <任务ID> <群号> <QQ号>")
-            
-        task = self.plugin.get_task_by_id(task_id)
-        if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
+        
+        # 获取并验证任务
+        task, error_msg = self._get_validated_task(event, task_id)
+        if error_msg:
+            return event.plain_result(error_msg)
         
         # 确保group_id和user_id是字符串
         group_id_str = str(group_id)
