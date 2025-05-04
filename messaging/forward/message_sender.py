@@ -4,6 +4,7 @@ import json
 import traceback
 import base64
 from typing import Dict, List, Any
+import uuid
 from astrbot.api import logger
 from astrbot.api.message_components import Plain, Image
 
@@ -25,6 +26,22 @@ class MessageSender:
             bool: 发送成功返回True，否则返回False
         """
         try:
+            # 检查是否包含GIF图片
+            has_gif = False
+            for node in nodes_list:
+                if node["type"] == "node" and "data" in node and "content" in node["data"]:
+                    for item in node["data"]["content"]:
+                        if item["type"] == "image" and "data" in item:
+                            if item["data"].get("is_gif", False):
+                                has_gif = True
+                                break
+                if has_gif:
+                    break
+            
+            # 记录发现的GIF图片
+            if has_gif:
+                logger.info("📢 检测到转发消息中包含GIF图片，优化处理策略")
+            
             # 获取群号或用户ID
             target_parts = target_session.split(":", 2)
             if len(target_parts) != 3:
@@ -35,13 +52,11 @@ class MessageSender:
             
             # 记录转发的节点结构
             logger.debug(f"发送转发消息，共 {len(nodes_list)} 个节点")
-            for i, node in enumerate(nodes_list[:2]):  # 只记录前两个节点避免日志过长
-                logger.debug(f"节点{i+1}结构: {json.dumps(node, ensure_ascii=False)[:100]}")
             
             # 获取客户端
             client = self.plugin.context.get_platform("aiocqhttp").get_client()
             
-            # 策略1: 直接使用当前节点发送合并转发消息
+            # 策略1: 直接发送合并转发消息 (如果有GIF也尝试)
             try:
                 logger.info("📤 策略1: 尝试直接发送合并转发消息")
                 
@@ -54,7 +69,7 @@ class MessageSender:
                     payload = {"user_id": int(target_id), "messages": nodes_list}
                 
                 response = await client.call_action(action, **payload)
-                logger.info(f"策略1发送结果: {response}")
+                
                 if response and not isinstance(response, Exception):
                     logger.info("✅ 策略1: 合并转发消息发送成功")
                     return True
@@ -62,10 +77,57 @@ class MessageSender:
                     logger.warning("❌ 策略1: 合并转发消息发送失败，尝试策略2")
             except Exception as e:
                 logger.warning(f"❌ 策略1失败: {e}")
-                
-            # 策略2: 下载图片并使用本地文件重新发送
+            
+            # 策略2: 如果有GIF，先尝试下载GIF并直接发送，而不是立即转换为PNG
+            if has_gif:
+                try:
+                    logger.info("📤 策略2: 尝试下载GIF并发送")
+                    
+                    # 深拷贝节点列表以免修改原始数据
+                    import copy
+                    gif_nodes = copy.deepcopy(nodes_list)
+                    
+                    # 下载GIF但保持GIF格式 - 新增函数调用
+                    downloaded_gif_nodes = await self._download_gif_in_nodes(gif_nodes)
+                    
+                    # 尝试直接发送下载的GIF
+                    if "GroupMessage" in target_session:
+                        action = "send_group_forward_msg"
+                        payload = {"group_id": int(target_id), "messages": downloaded_gif_nodes}
+                    else:
+                        action = "send_private_forward_msg"
+                        payload = {"user_id": int(target_id), "messages": downloaded_gif_nodes}
+                    
+                    response = await client.call_action(action, **payload)
+                    if response and not isinstance(response, Exception):
+                        logger.info("✅ 策略2: 使用下载的原始GIF发送成功")
+                        return True
+                    else:
+                        logger.warning("❌ 策略2: 使用下载的原始GIF发送失败，尝试转换为静态图")
+                        
+                        # 转换为静态图再次尝试
+                        static_nodes = copy.deepcopy(downloaded_gif_nodes)
+                        await self._convert_gif_to_static(static_nodes)
+                        
+                        if "GroupMessage" in target_session:
+                            action = "send_group_forward_msg"
+                            payload = {"group_id": int(target_id), "messages": static_nodes}
+                        else:
+                            action = "send_private_forward_msg"
+                            payload = {"user_id": int(target_id), "messages": static_nodes}
+                        
+                        response = await client.call_action(action, **payload)
+                        if response and not isinstance(response, Exception):
+                            logger.info("✅ 策略2: GIF转静态图后发送成功")
+                            return True
+                        else:
+                            logger.warning("❌ 策略2: GIF转静态图也失败，尝试策略3")
+                except Exception as e:
+                    logger.warning(f"❌ 策略2失败: {e}")
+            
+            # 策略3: 下载图片并使用本地文件重新发送 (所有图片)
             try:
-                logger.info("📤 策略2: 尝试下载图片后重新发送合并转发消息")
+                logger.info("📤 策略3: 尝试下载所有图片后重新发送合并转发消息")
                 
                 # 下载所有图片并更新节点
                 updated_nodes = await self._download_images_in_nodes(nodes_list)
@@ -79,22 +141,170 @@ class MessageSender:
                     payload = {"user_id": int(target_id), "messages": updated_nodes}
                 
                 response = await client.call_action(action, **payload)
-                logger.info(f"策略2发送结果: {response}")
                 if response and not isinstance(response, Exception):
-                    logger.info("✅ 策略2: 下载图片后合并转发发送成功")
+                    logger.info("✅ 策略3: 下载图片后合并转发发送成功")
                     return True
                 else:
-                    logger.warning("❌ 策略2: 下载图片后合并转发发送失败，尝试策略3")
+                    logger.warning("❌ 策略3: 下载图片后合并转发发送失败，尝试最终策略")
             except Exception as e:
-                logger.warning(f"❌ 策略2失败: {e}")
-                logger.warning(traceback.format_exc())
+                logger.warning(f"❌ 策略3失败: {e}")
             
-            # 策略3: 放弃合并转发，改用逐条发送
-            logger.info("📤 策略3: 放弃合并转发，改用逐条发送")
+            # 策略4: 放弃合并转发，改用逐条发送
+            logger.info("📤 最终策略: 放弃合并转发，改用逐条发送")
             return await self.send_with_fallback(target_session, nodes_list)
             
         except Exception as e:
             logger.error(f"所有发送策略均失败: {e}")
+            logger.error(traceback.format_exc())
+            return False
+    
+    # 新增函数: 转换GIF为静态图
+    async def _convert_gif_to_static(self, nodes_list: List[Dict]) -> None:
+        """将节点中的GIF转换为静态图像"""
+        
+        from PIL import Image
+        
+        # 获取插件数据目录
+        plugin_data_dir = os.path.join("data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images", "pillow")
+        os.makedirs(plugin_data_dir, exist_ok=True)
+        
+        for node in nodes_list:
+            if node["type"] == "node" and "data" in node and "content" in node["data"]:
+                for item in node["data"]["content"]:
+                    if item["type"] == "image" and "data" in item:
+                        # 检查是否为GIF
+                        if item["data"].get("is_gif", False) or \
+                           (item["data"].get("file", "").lower().endswith('.gif')):
+                            
+                            file_path = item["data"].get("file", "")
+                            
+                            # 尝试将GIF转换为静态图像
+                            try:
+                                # 如果是URL，先下载
+                                if file_path.startswith(("http://", "https://")):
+                                    local_path = await self.download_helper.download_file(file_path, "gif")
+                                    if not local_path:
+                                        continue
+                                elif file_path.startswith("file:///"):
+                                    local_path = file_path[8:]
+                                else:
+                                    local_path = file_path
+                                
+                                # 检查文件是否存在
+                                if not os.path.exists(local_path):
+                                    continue
+                                
+                                # 使用PIL打开GIF并提取第一帧
+                                gif_img = Image.open(local_path)
+                                first_frame = gif_img.convert('RGBA')
+                                
+                                # 保存为静态PNG到插件目录
+                                static_path = os.path.join(plugin_data_dir, f"{uuid.uuid4()}.png")
+                                first_frame.save(static_path, "PNG")
+                                
+                                # 更新节点中的图片数据
+                                item["data"]["file"] = f"file:///{static_path}"
+                                item["data"]["is_gif"] = False
+                                logger.info(f"GIF已转换为静态图: {static_path}")
+                                
+                            except Exception as e:
+                                logger.error(f"转换GIF失败: {e}")
+        
+        logger.info("GIF转换处理完成")
+
+    async def _download_gif_in_nodes(self, nodes_list: List[Dict]) -> List[Dict]:
+        """下载节点中的GIF图片但不转换格式
+        
+        Args:
+            nodes_list: 节点列表
+            
+        Returns:
+            List[Dict]: 更新了GIF图片路径的节点列表
+"""
+        # 获取插件数据目录
+        plugin_data_dir = os.path.join("data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images")
+        os.makedirs(plugin_data_dir, exist_ok=True)
+        
+        for node in nodes_list:
+            if node["type"] == "node" and "data" in node and "content" in node["data"]:
+                for item in node["data"]["content"]:
+                    if item["type"] == "image" and "data" in item:
+                        # 检查是否为GIF
+                        if item["data"].get("is_gif", False) or \
+                           (item["data"].get("file", "").lower().endswith('.gif')):
+                            
+                            file_path = item["data"].get("file", "")
+                            
+                            # 如果是URL，下载GIF
+                            if file_path.startswith(("http://", "https://")):
+                                try:
+                                    # 使用download_helper下载GIF并保留原始格式
+                                    filename = f"{uuid.uuid4()}.gif"
+                                    local_path = os.path.join(plugin_data_dir, filename)
+                                    
+                                    # 直接下载URL到本地
+                                    success = await self._download_gif_with_curl(file_path, local_path)
+                                    
+                                    if success and os.path.exists(local_path):
+                                        # 更新节点中的图片路径
+                                        item["data"]["file"] = f"file:///{local_path}"
+                                        logger.info(f"GIF已下载到本地: {local_path}")
+                                except Exception as e:
+                                    logger.error(f"下载GIF失败: {e}")
+        
+        return nodes_list
+
+    async def _download_gif_with_curl(self, url: str, output_path: str) -> bool:
+        """使用curl下载GIF并保持原始格式
+        
+        Args:
+            url: GIF图片URL
+            output_path: 输出路径
+            
+        Returns:
+            bool: 下载成功返回True，否则返回False
+        """
+        try:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # 构建curl命令
+            cmd = [
+                "curl", 
+                "-s",                   # 静默模式
+                "-L",                   # 跟随重定向
+                "-o", output_path,      # 输出文件
+                "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+                url
+            ]
+            
+            # 执行curl命令
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            # 检查下载结果
+            if process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                # 简单检查文件头以确认是GIF
+                with open(output_path, "rb") as f:
+                    header = f.read(6)
+                
+                if header.startswith(b'GIF'):
+                    logger.info(f"成功下载GIF: {output_path}")
+                    return True
+                else:
+                    logger.warning(f"下载的文件不是GIF格式: {output_path}")
+                    return False
+            else:
+                stderr_text = stderr.decode() if stderr else "未知错误"
+                logger.warning(f"下载GIF失败: {stderr_text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"下载GIF异常: {e}")
             logger.error(traceback.format_exc())
             return False
 
@@ -158,16 +368,13 @@ class MessageSender:
             str: 成功返回本地文件路径，失败返回None
         """
         try:
-            # 创建临时文件路径
-            import uuid
-            import tempfile
-            import subprocess
+            # 获取标准插件数据目录
+            plugin_data_dir = os.path.join("data", "plugin_data", "astrbot_plugin_turnrig", "temp", "images")
+            os.makedirs(plugin_data_dir, exist_ok=True)
             
             # 使用uuid生成唯一文件名
             filename = f"{uuid.uuid4()}.jpg"
-            temp_dir = os.path.join(tempfile.gettempdir(), "astrbot_images")
-            os.makedirs(temp_dir, exist_ok=True)
-            output_path = os.path.join(temp_dir, filename)
+            output_path = os.path.join(plugin_data_dir, filename)
             
             logger.debug(f"下载图片: {url} -> {output_path}")
             
@@ -612,7 +819,7 @@ class MessageSender:
             logger.error(traceback.format_exc())
             return False
     
-    async def send_to_non_qq_platform(self, target_session: str, source_name: str, valid_messages: List[Dict]):
+    async def send_to_non_qq_platform(self, target_session: str, source_name: str, valid_messages: List[Dict]) -> bool:
         """发送消息到非QQ平台
         
         Args:

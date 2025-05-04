@@ -154,6 +154,20 @@ class MessageBuilder:
         base64_data = comp.get('base64', '')
         filename = comp.get('filename', '')
         
+        # 检查是否为GIF - 新增！
+        is_gif = False
+        if url and url.lower().endswith('.gif'):
+            is_gif = True
+        elif file and file.lower().endswith('.gif'):
+            is_gif = True
+        elif filename and filename.lower().endswith('.gif'):
+            is_gif = True
+        
+        # 如果是GIF，添加标记
+        if is_gif:
+            image_data["data"]["is_gif"] = True
+            logger.info(f"检测到GIF图片: {filename or url or file}")
+        
         # 增加日志，查看接收到的原始组件结构
         logger.debug(f"处理图片组件，原始comp: {comp}")
         

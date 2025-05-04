@@ -21,7 +21,7 @@ class ForwardManager:
         self.plugin = plugin
         
         # 创建媒体下载目录
-        self.image_dir = os.path.join(self.plugin.data_dir, "temp_images")
+        self.image_dir = os.path.join(self.plugin.data_dir, "temp")
         os.makedirs(self.image_dir, exist_ok=True)
         
         # 初始化各个子组件

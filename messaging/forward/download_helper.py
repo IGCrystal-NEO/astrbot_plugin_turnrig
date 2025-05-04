@@ -8,21 +8,18 @@ from astrbot.api import logger
 class DownloadHelper:
     """媒体下载助手类"""
     
-    def __init__(self, image_dir):
-        self.image_dir = image_dir
+    def __init__(self, image_dir=None):
+        # 如果未提供路径，使用标准插件数据目录
+        if not image_dir:
+            self.image_dir = os.path.join("data", "plugin_data", "astrbot_plugin_turnrig", "temp", "images")
+        else:
+            self.image_dir = image_dir
+        
         os.makedirs(self.image_dir, exist_ok=True)
         logger.info(f"媒体临时目录: {self.image_dir}")
     
     async def download_file(self, url: str, file_type: str = "jpg") -> str:
-        """下载文件到本地临时目录，支持各种媒体类型
-        
-        Args:
-            url: 文件URL
-            file_type: 文件扩展名，默认为jpg
-            
-        Returns:
-            str: 成功时返回本地文件路径，失败时返回空字符串
-        """
+        """下载文件到本地临时目录，支持各种媒体类型"""
         try:
             # 生成唯一文件名
             filename = f"{uuid.uuid4()}.{file_type}"
@@ -31,6 +28,11 @@ class DownloadHelper:
             # 检查是否为 QQ 图片服务器链接
             is_qq_multimedia = "multimedia.nt.qq.com.cn" in url or "gchat.qpic.cn" in url
             
+            # 检查是否为GIF - 新增逻辑
+            is_gif = file_type.lower() == "gif" or url.lower().endswith('.gif')
+            if is_gif:
+                logger.info(f"正在下载GIF图片: {url}")
+            
             # 方法1: 使用requests直接下载
             try:
                 response = await asyncio.to_thread(
@@ -38,20 +40,30 @@ class DownloadHelper:
                     url, 
                     timeout=30,
                     headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'},
-                    verify=False  # 对于QQ多媒体链接，禁用SSL验证
+                    verify=False
                 )
                 
                 if response.status_code == 200:
                     with open(filepath, "wb") as f:
                         f.write(response.content)
-                    logger.debug(f"成功下载文件到: {filepath}")
+                    
+                    # 验证GIF文件有效性
+                    if is_gif:
+                        # 检查文件头
+                        with open(filepath, "rb") as f:
+                            header = f.read(6)
+                        if header.startswith(b'GIF'):
+                            logger.info(f"成功下载GIF动图: {filepath}")
+                        else:
+                            logger.warning(f"下载的GIF文件头无效，可能不是真正的GIF: {filepath}")
+                    
                     return filepath
                 else:
                     logger.warning(f"请求下载失败，状态码: {response.status_code}，尝试使用curl")
             except Exception as e:
                 logger.warning(f"请求下载出错: {e}，尝试使用curl")
             
-            # 方法2: 使用curl下载
+            # 方法2: 使用curl下载，对GIF更为友好
             try:
                 import subprocess
                 
@@ -76,7 +88,8 @@ class DownloadHelper:
                 
                 # 检查下载结果
                 if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
-                    logger.debug(f"curl下载成功: {filepath}")
+                    if is_gif:
+                        logger.info(f"使用curl成功下载GIF: {filepath}")
                     return filepath
                 else:
                     stderr_text = stderr.decode() if stderr else "未知错误"
@@ -84,9 +97,9 @@ class DownloadHelper:
             except Exception as e:
                 logger.warning(f"curl下载异常: {e}")
             
-            # 如果下载失败但是QQ多媒体链接，返回原始URL
-            if is_qq_multimedia:
-                logger.info(f"无法下载QQ图片，尝试使用原始URL: {url}")
+            # 如果是GIF，更倾向于返回原始URL
+            if is_gif and is_qq_multimedia:
+                logger.info(f"GIF下载失败，直接使用原始URL: {url}")
                 return url
                 
             return ""
