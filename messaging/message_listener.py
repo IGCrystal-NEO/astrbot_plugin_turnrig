@@ -143,7 +143,40 @@ class MessageListener:
                 
                 # 序列化消息
                 serialized_messages = serialize_message(messages)
-                
+
+                # 从原始消息中提取图片文件名
+                if hasattr(event.message_obj, 'raw_message') and event.message_obj.raw_message:
+                    try:
+                        raw_message = event.message_obj.raw_message
+                        # 检查Event对象的message列表
+                        if hasattr(raw_message, 'message') and isinstance(raw_message.message, list):
+                            for raw_msg in raw_message.message:
+                                if isinstance(raw_msg, dict) and raw_msg.get('type') == 'image' and 'data' in raw_msg:
+                                    extracted_filename = raw_msg['data'].get('filename')
+                                    if extracted_filename:
+                                        logger.debug(f"从原始消息提取到filename: {extracted_filename}")
+                                        # 将filename添加到对应的图片消息组件
+                                        for i, msg in enumerate(serialized_messages):
+                                            if msg.get('type') == 'image':
+                                                serialized_messages[i]['filename'] = extracted_filename
+                                                logger.debug(f"已将filename {extracted_filename} 添加到图片消息")
+                                                break
+                        # 处理raw_message是字典的情况
+                        elif isinstance(raw_message, dict) and 'message' in raw_message and isinstance(raw_message['message'], list):
+                            for raw_msg in raw_message['message']:
+                                if isinstance(raw_msg, dict) and raw_msg.get('type') == 'image' and 'data' in raw_msg:
+                                    extracted_filename = raw_msg['data'].get('filename')
+                                    if extracted_filename:
+                                        logger.debug(f"从原始消息字典提取到filename: {extracted_filename}")
+                                        # 将filename添加到对应的图片消息组件
+                                        for i, msg in enumerate(serialized_messages):
+                                            if msg.get('type') == 'image':
+                                                serialized_messages[i]['filename'] = extracted_filename
+                                                logger.debug(f"已将filename {extracted_filename} 添加到图片消息")
+                                                break
+                    except Exception as e:
+                        logger.error(f"提取filename时出错: {e}", exc_info=True)
+
                 # 如果序列化后没有内容，但原始消息有内容，则直接创建一个纯文本组件
                 if (not serialized_messages or 
                     (len(serialized_messages) == 1 and 

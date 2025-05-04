@@ -15,7 +15,7 @@ class MessageSender:
         self.download_helper = download_helper
     
     async def send_forward_message_via_api(self, target_session: str, nodes_list: List[Dict]) -> bool:
-        """使用原生API直接发送转发消息
+        """使用多级策略发送转发消息
         
         Args:
             target_session: 目标会话ID
@@ -33,32 +33,177 @@ class MessageSender:
                 
             target_platform, target_type, target_id = target_parts
             
-            # 记录转发的节点结构，便于调试
+            # 记录转发的节点结构
             logger.debug(f"发送转发消息，共 {len(nodes_list)} 个节点")
             for i, node in enumerate(nodes_list[:2]):  # 只记录前两个节点避免日志过长
-                logger.debug(f"节点{i+1}结构: {json.dumps(node, ensure_ascii=False)[:100]}...")
+                logger.debug(f"节点{i+1}结构: {json.dumps(node, ensure_ascii=False)[:100]}")
             
-            # 调用API发送
-            if "GroupMessage" in target_session:
-                action = "send_group_forward_msg"
-                payload = {"group_id": int(target_id), "messages": nodes_list}
-            else:
-                action = "send_private_forward_msg"
-                payload = {"user_id": int(target_id), "messages": nodes_list}
-            
-            # 获取client并调用API
+            # 获取客户端
             client = self.plugin.context.get_platform("aiocqhttp").get_client()
-            response = await client.call_action(action, **payload)
             
-            logger.info(f"使用原生API发送转发消息结果: {response}")
-            return True
+            # 策略1: 直接使用当前节点发送合并转发消息
+            try:
+                logger.info("📤 策略1: 尝试直接发送合并转发消息")
+                
+                # 调用API发送
+                if "GroupMessage" in target_session:
+                    action = "send_group_forward_msg"
+                    payload = {"group_id": int(target_id), "messages": nodes_list}
+                else:
+                    action = "send_private_forward_msg"
+                    payload = {"user_id": int(target_id), "messages": nodes_list}
+                
+                response = await client.call_action(action, **payload)
+                logger.info(f"策略1发送结果: {response}")
+                if response and not isinstance(response, Exception):
+                    logger.info("✅ 策略1: 合并转发消息发送成功")
+                    return True
+                else:
+                    logger.warning("❌ 策略1: 合并转发消息发送失败，尝试策略2")
+            except Exception as e:
+                logger.warning(f"❌ 策略1失败: {e}")
+                
+            # 策略2: 下载图片并使用本地文件重新发送
+            try:
+                logger.info("📤 策略2: 尝试下载图片后重新发送合并转发消息")
+                
+                # 下载所有图片并更新节点
+                updated_nodes = await self._download_images_in_nodes(nodes_list)
+                
+                # 调用API再次发送
+                if "GroupMessage" in target_session:
+                    action = "send_group_forward_msg"
+                    payload = {"group_id": int(target_id), "messages": updated_nodes}
+                else:
+                    action = "send_private_forward_msg"
+                    payload = {"user_id": int(target_id), "messages": updated_nodes}
+                
+                response = await client.call_action(action, **payload)
+                logger.info(f"策略2发送结果: {response}")
+                if response and not isinstance(response, Exception):
+                    logger.info("✅ 策略2: 下载图片后合并转发发送成功")
+                    return True
+                else:
+                    logger.warning("❌ 策略2: 下载图片后合并转发发送失败，尝试策略3")
+            except Exception as e:
+                logger.warning(f"❌ 策略2失败: {e}")
+                logger.warning(traceback.format_exc())
+            
+            # 策略3: 放弃合并转发，改用逐条发送
+            logger.info("📤 策略3: 放弃合并转发，改用逐条发送")
+            return await self.send_with_fallback(target_session, nodes_list)
+            
         except Exception as e:
-            logger.error(f"使用原生API发送转发消息失败: {e}")
+            logger.error(f"所有发送策略均失败: {e}")
             logger.error(traceback.format_exc())
-            # 尝试使用备选方案发送
-            fallback_result = await self.send_with_fallback(target_session, nodes_list)
-            return fallback_result  # 返回备选方案的结果
-    
+            return False
+
+    async def _download_images_in_nodes(self, nodes_list: List[Dict]) -> List[Dict]:
+        """使用curl下载节点中所有图片到本地
+        
+        Args:
+            nodes_list: 节点列表
+            
+        Returns:
+            List[Dict]: 更新了图片路径的节点列表
+        """
+        updated_nodes = []
+        
+        for node in nodes_list:
+            # 深复制节点以避免修改原始数据
+            import copy
+            node_copy = copy.deepcopy(node)
+            
+            if node["type"] == "node" and "data" in node and "content" in node["data"]:
+                for item in node_copy["data"]["content"]:
+                    if item["type"] == "image" and "data" in item and "file" in item["data"]:
+                        file_path = item["data"]["file"]
+                        
+                        # 检查是否为URL
+                        if file_path.startswith(("http://", "https://")):
+                            # 尝试下载图片
+                            local_path = await self._download_image_with_curl(file_path)
+                            
+                            if local_path and os.path.exists(local_path):
+                                # 如果图片小于1MB，转换为base64
+                                file_size = os.path.getsize(local_path)
+                                if file_size < 1048576:  # 1MB
+                                    try:
+                                        # 转换为base64
+                                        with open(local_path, "rb") as f:
+                                            img_content = f.read()
+                                        b64_data = base64.b64encode(img_content).decode('utf-8')
+                                        item["data"]["file"] = f"base64://{b64_data}"
+                                        logger.debug(f"图片已转换为base64: {local_path}")
+                                    except Exception as e:
+                                        logger.warning(f"转换base64失败，使用本地路径: {e}")
+                                        item["data"]["file"] = f"file:///{local_path}"
+                                else:
+                                    # 图片太大，直接使用本地路径
+                                    item["data"]["file"] = f"file:///{local_path}"
+                                    
+                                logger.debug(f"图片已下载到本地: {local_path}")
+            
+            updated_nodes.append(node_copy)
+        
+        return updated_nodes
+
+    async def _download_image_with_curl(self, url: str) -> str:
+        """使用curl下载图片
+        
+        Args:
+            url: 图片URL
+            
+        Returns:
+            str: 成功返回本地文件路径，失败返回None
+        """
+        try:
+            # 创建临时文件路径
+            import uuid
+            import tempfile
+            import subprocess
+            
+            # 使用uuid生成唯一文件名
+            filename = f"{uuid.uuid4()}.jpg"
+            temp_dir = os.path.join(tempfile.gettempdir(), "astrbot_images")
+            os.makedirs(temp_dir, exist_ok=True)
+            output_path = os.path.join(temp_dir, filename)
+            
+            logger.debug(f"下载图片: {url} -> {output_path}")
+            
+            # 构建curl命令
+            cmd = [
+                "curl", 
+                "-s",                   # 静默模式
+                "-L",                   # 跟随重定向
+                "-o", output_path,      # 输出文件
+                "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+                url
+            ]
+            
+            # 执行curl命令
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            # 检查下载结果
+            if process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                logger.info(f"✅ 图片下载成功: {output_path}")
+                return output_path
+            else:
+                stderr_text = stderr.decode() if stderr else "未知错误"
+                logger.warning(f"❌ 下载图片失败: {stderr_text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"下载图片异常: {e}")
+            logger.error(traceback.format_exc())
+            return None
+
     async def send_with_fallback(self, target_session: str, nodes_list: List[Dict]) -> bool:
         """当合并转发失败时，尝试直接发送消息
         
@@ -204,19 +349,22 @@ class MessageSender:
             file_path = ""
             img_url = ""
             base64_data = ""
+            original_url = ""  # 新增: 从message_builder保存的原始URL字段
             
             # 检查消息格式，提取图片信息
             if "data" in img_item:
                 file_path = img_item["data"].get("file", "")
                 img_url = img_item["data"].get("url", "")
                 base64_data = img_item["data"].get("base64", "")
+                original_url = img_item["data"].get("original_url", "")  # 新增: 获取原始URL
             else:
                 # 兼容直接存储的序列化格式
                 file_path = img_item.get("file", "")
                 img_url = img_item.get("url", "")
                 base64_data = img_item.get("base64", "")
+                original_url = img_item.get("original_url", "")  # 新增: 获取原始URL
             
-            logger.debug(f"准备图片信息: file_path={file_path}, url={img_url}, has_base64={'是' if base64_data else '否'}")
+            logger.debug(f"准备图片信息: file_path={file_path}, url={img_url}, original_url={original_url}, has_base64={'是' if base64_data else '否'}")
             
             # 检查是否是QQ链接
             is_qq_url = False
@@ -224,10 +372,15 @@ class MessageSender:
                 is_qq_url = True
             if file_path and ("multimedia.nt.qq.com.cn" in file_path or "gchat.qpic.cn" in file_path):
                 is_qq_url = True
-                
-            # 对于QQ链接，直接返回URL更可能成功
+            if original_url and ("multimedia.nt.qq.com.cn" in original_url or "gchat.qpic.cn" in original_url):  # 新增: 检查original_url
+                is_qq_url = True
+                    
+            # 对于QQ链接，修改优先级: original_url > img_url > file_path
             if is_qq_url:
                 logger.info(f"检测到QQ图片链接，直接使用URL发送")
+                # 优先使用original_url
+                if original_url:
+                    return original_url
                 return img_url or file_path
             
             # 如果有base64数据，优先使用base64
@@ -278,6 +431,10 @@ class MessageSender:
                     return f"file:///{file_path}"
                 else:
                     logger.warning(f"文件路径不存在: {file_path}")
+                    # 新增: 文件不存在时尝试使用original_url
+                    if original_url:
+                        logger.debug(f"文件不存在，使用原始URL: {original_url}")
+                        return original_url
             
             # 其次使用URL
             if img_url:
@@ -308,6 +465,11 @@ class MessageSender:
                     # 下载失败时直接返回URL
                     return img_url
             
+            # 新增: 最后尝试使用original_url
+            if original_url:
+                logger.debug(f"尝试使用原始URL作为最后手段: {original_url}")
+                return original_url
+                
             logger.warning("图片准备失败: 无可用来源")
             return None
         except Exception as e:

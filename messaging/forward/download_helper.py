@@ -31,8 +31,8 @@ class DownloadHelper:
             # 检查是否为 QQ 图片服务器链接
             is_qq_multimedia = "multimedia.nt.qq.com.cn" in url or "gchat.qpic.cn" in url
             
+            # 方法1: 使用requests直接下载
             try:
-                # 使用requests直接下载，更加可靠
                 response = await asyncio.to_thread(
                     requests.get, 
                     url, 
@@ -47,10 +47,42 @@ class DownloadHelper:
                     logger.debug(f"成功下载文件到: {filepath}")
                     return filepath
                 else:
-                    logger.error(f"下载文件失败，状态码: {response.status_code}")
+                    logger.warning(f"请求下载失败，状态码: {response.status_code}，尝试使用curl")
             except Exception as e:
-                logger.error(f"下载文件出错: {e}")
-                logger.error(traceback.format_exc())
+                logger.warning(f"请求下载出错: {e}，尝试使用curl")
+            
+            # 方法2: 使用curl下载
+            try:
+                import subprocess
+                
+                # 构建curl命令
+                cmd = [
+                    "curl", 
+                    "-s",                   # 静默模式
+                    "-L",                   # 跟随重定向
+                    "-o", filepath,         # 输出文件
+                    "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+                    url
+                ]
+                
+                # 执行curl命令
+                process = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
+                stdout, stderr = await process.communicate()
+                
+                # 检查下载结果
+                if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                    logger.debug(f"curl下载成功: {filepath}")
+                    return filepath
+                else:
+                    stderr_text = stderr.decode() if stderr else "未知错误"
+                    logger.warning(f"curl下载失败: {stderr_text}")
+            except Exception as e:
+                logger.warning(f"curl下载异常: {e}")
             
             # 如果下载失败但是QQ多媒体链接，返回原始URL
             if is_qq_multimedia:
