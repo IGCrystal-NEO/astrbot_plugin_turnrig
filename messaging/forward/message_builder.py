@@ -38,16 +38,23 @@ class MessageBuilder:
             # 处理不同类型的组件
             component = await self._process_component(comp_type, comp, timestamp)
             if component:
-                message_components.append(component)
+                # 处理返回值是列表的情况
+                if isinstance(component, list):
+                    message_components.extend(component)
+                else:
+                    message_components.append(component)
         
         # 如果没有内容，使用纯文本消息
         if not message_components:
             message_components = [{"type": "text", "data": {"text": "[空消息]"}}]
         
-        # 添加更详细的日志，帮助调试
+        # 添加更详细的日志，帮助调试（修复这里的错误）
         logger.debug(f"构建转发节点: {sender_name}({sender_id_str}), 共 {len(message_components)} 个组件")
         for i, comp in enumerate(message_components[:3]):  # 只显示前三个组件避免日志过长
-            logger.debug(f"组件{i+1}: 类型={comp.get('type')}, 数据={comp.get('data')}")
+            if isinstance(comp, dict):
+                logger.debug(f"组件{i+1}: 类型={comp.get('type')}, 数据={comp.get('data')}")
+            else:
+                logger.debug(f"组件{i+1}: 非字典类型，实际类型={type(comp)}")
         
         # 直接返回适合QQ API的字典格式
         node_data = {
@@ -92,12 +99,23 @@ class MessageBuilder:
             return await self._process_image_component(comp)
             
         elif comp_type == 'at':
+            # 获取@的用户名和QQ号
+            at_name = comp.get('name', '')
+            at_qq = comp.get('qq', '')
+            
+            # 构建显示文本，优先使用name，如果没有则使用qq号
+            display_text = at_name if at_name else at_qq
+            
+            # 检查是否已经以@开头，避免重复@
+            if display_text.startswith('@'):
+                formatted_text = f"{display_text} "  # 已经有@，只加空格
+            else:
+                formatted_text = f"@{display_text} "  # 添加@和空格
+            
+            # 返回文本组件而非at组件
             return {
-                "type": "at",
-                "data": {
-                    "qq": comp.get('qq', ''),
-                    "name": comp.get('name', '')
-                }
+                "type": "text", 
+                "data": {"text": formatted_text}
             }
             
         elif comp_type == 'face':
