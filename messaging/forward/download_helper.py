@@ -11,7 +11,7 @@ class DownloadHelper:
     def __init__(self, image_dir=None):
         # 如果未提供路径，使用标准插件数据目录
         if not image_dir:
-            self.image_dir = os.path.join("data", "plugin_data", "astrbot_plugin_turnrig", "temp", "images")
+            self.image_dir = os.path.join("data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images")
         else:
             self.image_dir = image_dir
         

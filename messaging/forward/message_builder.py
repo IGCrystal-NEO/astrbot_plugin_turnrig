@@ -166,6 +166,7 @@ class MessageBuilder:
         # 如果是GIF，添加标记
         if is_gif:
             image_data["data"]["is_gif"] = True
+            image_data["data"]["flash"] = True 
             logger.info(f"检测到GIF图片: {filename or url or file}")
         
         # 增加日志，查看接收到的原始组件结构
