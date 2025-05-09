@@ -4,4 +4,5 @@ repos:
     hooks:
       - id: ruff
         args: ["--fix"]
-        stages: [commit]
+        # stages 字段已更新，不会再用过时的名称
+        stages: [push]  # 举例：也可以用 push、commit-msg 等，具体看你的需求
