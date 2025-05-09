@@ -54,7 +54,7 @@ class CommandHandlers:
         session_id = str(session_id)
             
         # 处理单独的"群聊"或"私聊"关键词
-        if session_id == "群聊"or session_id == "私聊":
+        if session_id == "群聊" or session_id == "私聊":  # 修复语法错误
             logger.warning(f"检测到单独的'{session_id}'关键词，需要提供完整的会话ID格式：{session_id} <ID>")
             return session_id
         
@@ -91,6 +91,142 @@ class CommandHandlers:
             return None, None
             
         return task, None
+
+    def _parse_session_id_from_command(self, event, cmd_text, chat_type, chat_id, task_id=None, command_name=""):
+        """从命令参数中提取和标准化会话ID
+        
+        Args:
+            event: 消息事件对象
+            cmd_text: 原始命令文本
+            chat_type: 聊天类型参数
+            chat_id: 聊天ID参数
+            task_id: 任务ID，用于错误消息
+            command_name: 命令名称，用于错误消息格式化
+            
+        Returns:
+            tuple: (full_session_id, error_response) - 成功时error_response为None，失败时full_session_id为None
+        """
+        # 确保类型转换
+        if chat_type is not None:
+            chat_type = str(chat_type)
+        if chat_id is not None:
+            chat_id = str(chat_id)
+        
+        full_session_id = None
+        
+        # 检查是否直接传入了完整会话ID (带冒号的格式)
+        if chat_type and ':' in chat_type:
+            # 直接使用chat_type作为会话ID
+            full_session_id = self._ensure_full_session_id(chat_type)
+            logger.info(f"检测到完整会话ID: {full_session_id}")
+        # 检查是否为纯数字ID
+        elif chat_type and chat_type.isdigit() and not chat_id:
+            # 发现纯数字ID，要求用户明确指定群聊或私聊
+            error_msg = f"请明确指定会话类型喵～\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
+            if task_id:
+                error_msg += f"\n例如：/turnrig {command_name} {task_id} 群聊 {chat_type}"
+            return None, event.plain_result(error_msg)
+        else:
+            # 分析原始命令文本
+            parts = cmd_text.split()
+            # 查找 "群聊" 或 "私聊" 关键字
+            for i, part in enumerate(parts):
+                if part in ["群聊", "私聊"] and i+1 < len(parts):
+                    # 构造会话ID组合
+                    session_id_text = f"{part} {parts[i+1]}"
+                    full_session_id = self._ensure_full_session_id(session_id_text)
+                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_session_id}")
+                    break
+            
+            # 如果上面的方法失败，尝试常规处理流程
+            if not full_session_id:
+                # 检查基本参数
+                if not chat_type or chat_type not in ["群聊", "私聊"]:
+                    return None, event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>")
+                
+                if not chat_id:
+                    return None, event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig {command_name} <任务ID> {chat_type} <会话ID>")
+                
+                # 使用参数构造会话ID
+                session_id_text = f"{chat_type} {chat_id}"
+                full_session_id = self._ensure_full_session_id(session_id_text)
+                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_session_id}")
+        
+        if not full_session_id:
+            return None, event.plain_result(f"无法识别会话ID格式喵～\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>")
+        
+        return full_session_id, None
+    
+    async def _validate_command_params(self, event, task_id, error_msg="只有管理员才能执行此操作喵～", command_name=""):
+        """验证通用命令参数，包括管理员权限和任务ID
+        
+        Args:
+            event: 消息事件对象
+            task_id: 任务ID参数
+            error_msg: 权限错误提示
+            command_name: 命令名称，用于错误消息格式化
+            
+        Returns:
+            tuple: (task, cmd_text, error_response) - 成功时error_response为None
+        """
+        # 权限检查
+        is_admin, response = await self._check_admin(event, error_msg)
+        if not is_admin:
+            return None, None, response
+        
+        # 获取并验证任务
+        task, err_msg = self._get_validated_task(event, task_id)
+        if err_msg:
+            if command_name:
+                err_msg += f"\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
+            return None, None, event.plain_result(err_msg)
+        
+        # 获取原始命令文本用于日志
+        cmd_text = event.message_str
+        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
+            cmd_text = str(event.message_obj.raw_message)
+        logger.info(f"处理命令: {cmd_text}")
+        
+        return task, cmd_text, None
+    
+    def _update_session_list(self, task, session_id, list_name, action="add", session_type="会话"):
+        """更新任务的会话列表（添加或删除）
+        
+        Args:
+            task: 任务对象
+            session_id: 会话ID
+            list_name: 列表名称，如'monitor_groups', 'target_sessions'等
+            action: 操作类型，"add" 或 "remove"
+            session_type: 会话类型描述，用于响应消息
+            
+        Returns:
+            str: 操作结果消息
+        """
+        task_name = task.get('name', '未命名')
+        
+        # 确保列表存在
+        if list_name not in task:
+            task[list_name] = []
+            
+        # 添加操作
+        if action == "add":
+            if session_id not in task[list_name]:
+                task[list_name].append(session_id)
+                self.plugin.save_config_file()
+                return f"已将{session_type} {session_id} 添加到任务 [{task_name}] 的列表中喵～"
+            else:
+                return f"{session_type} {session_id} 已经在任务 [{task_name}] 的列表中了喵～"
+        
+        # 删除操作
+        elif action == "remove":
+            if session_id in task[list_name]:
+                task[list_name].remove(session_id)
+                self.plugin.save_config_file()
+                return f"已将{session_type} {session_id} 从任务 [{task_name}] 的列表中移除喵～"
+            else:
+                return f"{session_type} {session_id} 不在任务 [{task_name}] 的列表中喵～"
+        
+        return f"未知操作: {action}"
 
     def _extract_session_id(self, event: AstrMessageEvent, cmd_text: str = None, chat_type: str = None, chat_id: str = None, args=None):
         """从命令参数中提取会话ID"""
@@ -308,312 +444,87 @@ class CommandHandlers:
 
     async def handle_add_monitor(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """添加监听源喵～"""
-        # 权限检查
-        is_admin, response = await self._check_admin(event, "只有管理员才能添加监听源喵～")
-        if not is_admin:
-            return response
+        # 验证参数
+        task, cmd_text, error = await self._validate_command_params(
+            event, task_id, "只有管理员才能添加监听源喵～", "monitor")
+        if error:
+            return error
         
-        # 获取并验证任务
-        task, error_msg = self._get_validated_task(event, task_id)
-        if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>")
+        # 解析会话ID
+        session_id, error = self._parse_session_id_from_command(
+            event, cmd_text, chat_type, chat_id, task_id, "monitor")
+        if error:
+            return error
         
-        # 获取原始命令文本用于日志
-        cmd_text = event.message_str
-        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
-            cmd_text = str(event.message_obj.raw_message)
-        logger.info(f"处理监听源添加命令: {cmd_text}")
-        
-        # 确保类型转换，防止整数类型导致的错误
-        if chat_type is not None:
-            chat_type = str(chat_type)
-        if chat_id is not None:
-            chat_id = str(chat_id)
-        
-        # 检查是否直接传入了完整会话ID
-        full_session_id = None
-        if chat_type and ':' in chat_type:  # 如果chat_type看起来像一个完整的会话ID
-            # 直接使用chat_type作为会话ID
-            full_session_id = self._ensure_full_session_id(chat_type)
-            logger.info(f"检测到完整会话ID: {full_session_id}")
-        # 检查是否为纯数字（没有指定类型的会话ID）
-        elif chat_type and chat_type.isdigit() and not chat_id:
-            # 发现纯数字ID，要求用户明确指定群聊或私聊
-            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig monitor {task_id} 群聊 {chat_type}")
+        # 根据会话类型更新不同的监听列表
+        if "GroupMessage" in session_id:
+            result = self._update_session_list(task, session_id, 'monitor_groups', "add", "群聊")
+        elif "FriendMessage" in session_id:
+            result = self._update_session_list(task, session_id, 'monitor_private_users', "add", "用户")
         else:
-            # 分析原始命令文本
-            parts = cmd_text.split()
-            # 查找 "群聊" 或 "私聊" 关键字
-            for i, part in enumerate(parts):
-                if part in ["群聊", "私聊"] and i+1 < len(parts):
-                    # 构造会话ID组合
-                    session_id_text = f"{part} {parts[i+1]}"
-                    full_session_id = self._ensure_full_session_id(session_id_text)
-                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_session_id}")
-                    break
+            return event.plain_result(f"无法识别会话ID格式: {session_id}，请检查输入喵～\n正确格式示例：群聊 123456 或 私聊 123456")
             
-            # 如果上面的方法失败，尝试常规处理流程
-            if not full_session_id:
-                # 检查基本参数
-                if not chat_type or chat_type not in ["群聊", "私聊"]:
-                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>")
-                
-                if not chat_id:
-                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig monitor <任务ID> {chat_type} <会话ID>")
-                
-                # 使用参数构造会话ID
-                session_id_text = f"{chat_type} {chat_id}"
-                full_session_id = self._ensure_full_session_id(session_id_text)
-                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_session_id}")
-        
-        if not full_session_id:
-            return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>\n或者：/turnrig monitor <任务ID> <完整会话ID>")
-        
-        # 判断是群聊还是私聊
-        if "GroupMessage" in full_session_id:
-            if full_session_id not in task.get('monitor_groups', []):
-                task.setdefault('monitor_groups', []).append(full_session_id)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将群聊 {full_session_id} 添加到任务 [{task.get('name')}] 的监听列表喵～")
-            else:
-                return event.plain_result(f"群聊 {full_session_id} 已经在监听列表中了喵～")
-        elif "FriendMessage" in full_session_id:
-            if full_session_id not in task.get('monitor_private_users', []):
-                task.setdefault('monitor_private_users', []).append(full_session_id)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将用户 {full_session_id} 添加到任务 [{task.get('name')}] 的私聊监听列表喵～")
-            else:
-                return event.plain_result(f"用户 {full_session_id} 已经在私聊监听列表中了喵～")
-        else:
-            return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～\n正确格式示例：群聊 123456 或 私聊 123456")
+        return event.plain_result(result)
 
     async def handle_remove_monitor(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """删除监听源喵～"""
-        # 权限检查
-        is_admin, response = await self._check_admin(event, "只有管理员才能删除监听源喵～")
-        if not is_admin:
-            return response
+        # 验证参数
+        task, cmd_text, error = await self._validate_command_params(
+            event, task_id, "只有管理员才能删除监听源喵～", "unmonitor")
+        if error:
+            return error
         
-        # 获取并验证任务
-        task, error_msg = self._get_validated_task(event, task_id)
-        if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>")
+        # 解析会话ID
+        session_id, error = self._parse_session_id_from_command(
+            event, cmd_text, chat_type, chat_id, task_id, "unmonitor")
+        if error:
+            return error
         
-        # 获取原始命令文本用于日志
-        cmd_text = event.message_str
-        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
-            cmd_text = str(event.message_obj.raw_message)
-        logger.info(f"处理监听源删除命令: {cmd_text}")
-        
-        # 确保类型转换
-        if chat_type is not None:
-            chat_type = str(chat_type)
-        if chat_id is not None:
-            chat_id = str(chat_id)
-        
-        # 直接尝试从命令文本中提取会话类型和ID
-        full_session_id = None
-        
-        # 检查是否直接传入了完整会话ID (带冒号的格式)
-        if chat_type and ':' in chat_type:
-            # 直接使用chat_type作为会话ID
-            full_session_id = self._ensure_full_session_id(chat_type)
-            logger.info(f"检测到完整会话ID: {full_session_id}")
-        # 检查是否为纯数字ID
-        elif chat_type and chat_type.isdigit() and not chat_id:
-            # 发现纯数字ID，要求用户明确指定群聊或私聊
-            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig unmonitor {task_id} 群聊 {chat_type}")
+        # 根据会话类型更新不同的监听列表
+        if "GroupMessage" in session_id:
+            result = self._update_session_list(task, session_id, 'monitor_groups', "remove", "群聊")
+        elif "FriendMessage" in session_id:
+            result = self._update_session_list(task, session_id, 'monitor_private_users', "remove", "用户")
         else:
-            # 分析原始命令文本
-            parts = cmd_text.split()
-            # 查找 "群聊" 或 "私聊" 关键字
-            for i, part in enumerate(parts):
-                if part in ["群聊", "私聊"] and i+1 < len(parts):
-                    # 构造会话ID组合
-                    session_id_text = f"{part} {parts[i+1]}"
-                    full_session_id = self._ensure_full_session_id(session_id_text)
-                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_session_id}")
-                    break
+            return event.plain_result(f"无法识别会话ID格式: {session_id}，请检查输入喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>")
             
-            # 如果上面的方法失败，尝试常规处理流程
-            if not full_session_id:
-                # 检查基本参数
-                if not chat_type or chat_type not in ["群聊", "私聊"]:
-                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>")
-                
-                if not chat_id:
-                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig unmonitor <任务ID> {chat_type} <会话ID>")
-                
-                # 使用参数构造会话ID
-                session_id_text = f"{chat_type} {chat_id}"
-                full_session_id = self._ensure_full_session_id(session_id_text)
-                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_session_id}")
-        
-        if not full_session_id:
-            return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>\n或者：/turnrig unmonitor <任务ID> <完整会话ID>")
-        
-        # 判断是群聊还是私聊
-        if "GroupMessage" in full_session_id:
-            if full_session_id in task.get('monitor_groups', []):
-                task['monitor_groups'].remove(full_session_id)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将群聊 {full_session_id} 从任务 [{task.get('name')}] 的监听列表中删除喵～")
-            else:
-                return event.plain_result(f"群聊 {full_session_id} 不在监听列表中喵～")
-        elif "FriendMessage" in full_session_id:
-            if full_session_id in task.get('monitor_private_users', []):
-                task['monitor_private_users'].remove(full_session_id)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将用户 {full_session_id} 从任务 [{task.get('name')}] 的私聊监听列表中删除喵～")
-            else:
-                return event.plain_result(f"用户 {full_session_id} 不在私聊监听列表中喵～")
-        else:
-            return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>\n或者：/turnrig unmonitor <任务ID> <完整会话ID>")
+        return event.plain_result(result)
 
     async def handle_add_target(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """添加转发目标喵～"""
-        # 权限检查
-        is_admin, response = await self._check_admin(event, "只有管理员才能添加转发目标喵～")
-        if not is_admin:
-            return response
+        # 验证参数
+        task, cmd_text, error = await self._validate_command_params(
+            event, task_id, "只有管理员才能添加转发目标喵～", "target")
+        if error:
+            return error
         
-        # 获取并验证任务
-        task, error_msg = self._get_validated_task(event, task_id)
-        if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig target <任务ID> 群聊 <会话ID>")
+        # 解析会话ID
+        session_id, error = self._parse_session_id_from_command(
+            event, cmd_text, chat_type, chat_id, task_id, "target")
+        if error:
+            return error
         
-        # 获取原始命令文本用于日志
-        cmd_text = event.message_str
-        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
-            cmd_text = str(event.message_obj.raw_message)
-        logger.info(f"处理转发目标添加命令: {cmd_text}")
-        
-        # 确保类型转换，防止整数类型导致的错误
-        if chat_type is not None:
-            chat_type = str(chat_type)
-        if chat_id is not None:
-            chat_id = str(chat_id)
-        
-        # 直接尝试从命令文本中提取会话类型和ID
-        full_target_session = None
-        
-        # 检查是否直接传入了完整会话ID (带冒号的格式)
-        if chat_type and ':' in chat_type:
-            # 直接使用chat_type作为会话ID
-            full_target_session = self._ensure_full_session_id(chat_type)
-            logger.info(f"检测到完整会话ID: {full_target_session}")
-        # 检查是否为纯数字ID
-        elif chat_type and chat_type.isdigit() and not chat_id:
-            # 发现纯数字ID，要求用户明确指定群聊或私聊
-            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig target <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig target {task_id} 群聊 {chat_type}")
-        else:
-            # 分析原始命令文本
-            parts = cmd_text.split()
-            # 查找 "群聊" 或 "私聊" 关键字
-            for i, part in enumerate(parts):
-                if part in ["群聊", "私聊"] and i+1 < len(parts):
-                    # 构造会话ID组合
-                    session_id_text = f"{part} {parts[i+1]}"
-                    full_target_session = self._ensure_full_session_id(session_id_text)
-                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_target_session}")
-                    break
-            
-            # 如果上面的方法失败，尝试常规处理流程
-            if not full_target_session:
-                # 检查基本参数
-                if not chat_type or chat_type not in ["群聊", "私聊"]:
-                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig target <任务ID> 群聊/私聊 <会话ID>")
-                
-                if not chat_id:
-                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig target <任务ID> {chat_type} <会话ID>")
-                
-                # 使用参数构造会话ID
-                session_id_text = f"{chat_type} {chat_id}"
-                full_target_session = self._ensure_full_session_id(session_id_text)
-                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_target_session}")
-        
-        if not full_target_session:
-            return event.plain_result("无法识别会话ID格式喵～\n正确格式：\n1. /turnrig target <任务ID> 群聊/私聊 <会话ID>\n2. /turnrig target <任务ID> <完整会话ID>")
-        
-        if full_target_session not in task.get('target_sessions', []):
-            task.setdefault('target_sessions', []).append(full_target_session)
-            self.plugin.save_config_file()
-            return event.plain_result(f"已将 {full_target_session} 添加到任务 [{task.get('name')}] 的转发目标列表喵～")
-        else:
-            return event.plain_result(f"会话 {full_target_session} 已经在转发目标列表中了喵～")
+        # 更新目标列表
+        result = self._update_session_list(task, session_id, 'target_sessions', "add", "会话")
+        return event.plain_result(result)
 
     async def handle_remove_target(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """删除转发目标喵～"""
-        # 权限检查
-        is_admin, response = await self._check_admin(event, "只有管理员才能删除转发目标喵～")
-        if not is_admin:
-            return response
+        # 验证参数
+        task, cmd_text, error = await self._validate_command_params(
+            event, task_id, "只有管理员才能删除转发目标喵～", "untarget")
+        if error:
+            return error
         
-        # 获取并验证任务
-        task, error_msg = self._get_validated_task(event, task_id)
-        if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
+        # 解析会话ID
+        session_id, error = self._parse_session_id_from_command(
+            event, cmd_text, chat_type, chat_id, task_id, "untarget")
+        if error:
+            return error
         
-        # 获取原始命令文本用于日志
-        cmd_text = event.message_str
-        if not cmd_text and hasattr(event.message_obj, 'raw_message'):
-            cmd_text = str(event.message_obj.raw_message)
-        logger.info(f"处理转发目标删除命令: {cmd_text}")
-        
-        # 确保类型转换
-        if chat_type is not None:
-            chat_type = str(chat_type)
-        if chat_id is not None:
-            chat_id = str(chat_id)
-        
-        # 直接尝试从命令文本中提取会话类型和ID
-        # 这是一种更鲁棒的方式来处理命令参数
-        full_target_session = None
-        
-        # 检查是否直接传入了完整会话ID (带冒号的格式)
-        if chat_type and ':' in chat_type:
-            # 直接使用chat_type作为会话ID
-            full_target_session = self._ensure_full_session_id(chat_type)
-            logger.info(f"检测到完整会话ID: {full_target_session}")
-        # 检查是否为纯数字ID
-        elif chat_type and chat_type.isdigit() and not chat_id:
-            # 发现纯数字ID，要求用户明确指定群聊或私聊
-            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig untarget {task_id} 群聊 {chat_type}")
-        else:
-            # 分析原始命令文本
-            parts = cmd_text.split()
-            # 查找 "群聊" 或 "私聊" 关键字
-            for i, part in enumerate(parts):
-                if part in ["群聊", "私聊"] and i+1 < len(parts):
-                    # 构造会话ID组合
-                    session_id_text = f"{part} {parts[i+1]}"
-                    full_target_session = self._ensure_full_session_id(session_id_text)
-                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_target_session}")
-                    break
-            
-            # 如果上面的方法失败，尝试常规处理流程
-            if not full_target_session:
-                # 检查基本参数
-                if not chat_type or chat_type not in ["群聊", "私聊"]:
-                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
-                
-                if not chat_id:
-                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig untarget <任务ID> {chat_type} <会话ID>")
-                
-                # 使用参数构造会话ID
-                session_id_text = f"{chat_type} {chat_id}"
-                full_target_session = self._ensure_full_session_id(session_id_text)
-                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_target_session}")
-        
-        if not full_target_session:
-            return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
-        
-        if full_target_session in task.get('target_sessions', []):
-            task['target_sessions'].remove(full_target_session)
-            self.plugin.save_config_file()
-            return event.plain_result(f"已将 {full_target_session} 从任务 [{task.get('name')}] 的转发目标列表中删除喵～")
-        else:
-            return event.plain_result(f"会话 {full_target_session} 不在转发目标列表中喵～")
+        # 更新目标列表
+        result = self._update_session_list(task, session_id, 'target_sessions', "remove", "会话")
+        return event.plain_result(result)
 
     async def handle_set_threshold(self, event: AstrMessageEvent, task_id: str = None, threshold: int = None):
         """设置消息阈值喵～"""
@@ -804,23 +715,15 @@ class CommandHandlers:
         # 自动获取当前会话ID
         current_session = event.unified_msg_origin
         
-        # 判断是群聊还是私聊
+        # 根据会话类型更新不同的监听列表
         if "GroupMessage" in current_session:
-            if current_session not in task.get('monitor_groups', []):
-                task.setdefault('monitor_groups', []).append(current_session)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将当前群聊添加到任务 [{task.get('name')}] 的监听列表喵～")
-            else:
-                return event.plain_result(f"当前群聊已经在监听列表中了喵～")
+            result = self._update_session_list(task, current_session, 'monitor_groups', "add", "当前群聊")
         elif "FriendMessage" in current_session:
-            if current_session not in task.get('monitor_private_users', []):
-                task.setdefault('monitor_private_users', []).append(current_session)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将当前私聊用户添加到任务 [{task.get('name')}] 的监听列表喵～")
-            else:
-                return event.plain_result(f"当前私聊用户已经在监听列表中了喵～")
+            result = self._update_session_list(task, current_session, 'monitor_private_users', "add", "当前私聊用户")
         else:
             return event.plain_result(f"当前会话类型不支持添加到监听列表喵～")
+            
+        return event.plain_result(result)
 
     async def handle_tr_remove_monitor(self, event: AstrMessageEvent, task_id: str = None):
         """将当前会话从监听列表移除喵～"""
@@ -839,23 +742,15 @@ class CommandHandlers:
         # 自动获取当前会话ID
         current_session = event.unified_msg_origin
         
-        # 判断是群聊还是私聊
+        # 根据会话类型更新不同的监听列表
         if "GroupMessage" in current_session:
-            if current_session in task.get('monitor_groups', []):
-                task['monitor_groups'].remove(current_session)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将当前群聊从任务 [{task.get('name')}] 的监听列表中移除喵～")
-            else:
-                return event.plain_result(f"当前群聊不在监听列表中喵～")
+            result = self._update_session_list(task, current_session, 'monitor_groups', "remove", "当前群聊")
         elif "FriendMessage" in current_session:
-            if current_session in task.get('monitor_private_users', []):
-                task['monitor_private_users'].remove(current_session)
-                self.plugin.save_config_file()
-                return event.plain_result(f"已将当前私聊用户从任务 [{task.get('name')}] 的监听列表中移除喵～")
-            else:
-                return event.plain_result(f"当前私聊用户不在监听列表中喵～")
+            result = self._update_session_list(task, current_session, 'monitor_private_users', "remove", "当前私聊用户")
         else:
             return event.plain_result(f"当前会话类型不支持从监听列表移除喵～")
+            
+        return event.plain_result(result)
 
     async def handle_tr_add_target(self, event: AstrMessageEvent, task_id: str = None):
         """将当前会话添加为转发目标喵～"""
@@ -874,12 +769,9 @@ class CommandHandlers:
         # 自动获取当前会话ID
         current_session = event.unified_msg_origin
         
-        if current_session not in task.get('target_sessions', []):
-            task.setdefault('target_sessions', []).append(current_session)
-            self.plugin.save_config_file()
-            return event.plain_result(f"已将当前会话添加到任务 [{task.get('name')}] 的转发目标列表喵～")
-        else:
-            return event.plain_result(f"当前会话已经在转发目标列表中了喵～")
+        # 更新目标列表
+        result = self._update_session_list(task, current_session, 'target_sessions', "add", "当前会话")
+        return event.plain_result(result)
 
     async def handle_tr_remove_target(self, event: AstrMessageEvent, task_id: str = None):
         """将当前会话从转发目标移除喵～"""
@@ -898,12 +790,9 @@ class CommandHandlers:
         # 自动获取当前会话ID
         current_session = event.unified_msg_origin
         
-        if current_session in task.get('target_sessions', []):
-            task['target_sessions'].remove(current_session)
-            self.plugin.save_config_file()
-            return event.plain_result(f"已将当前会话从任务 [{task.get('name')}] 的转发目标列表中移除喵～")
-        else:
-            return event.plain_result(f"当前会话不在转发目标列表中喵～")
+        # 更新目标列表
+        result = self._update_session_list(task, current_session, 'target_sessions', "remove", "当前会话")
+        return event.plain_result(result)
 
     async def handle_tr_list_tasks(self, event: AstrMessageEvent):
         """列出所有转发任务喵～(简化版)"""
