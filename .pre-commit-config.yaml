@@ -1,6 +1,7 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4  # 用 Ruff 的一个稳定版本（可以到 GitHub 查最新版）
+    rev: v0.4.4
     hooks:
       - id: ruff
-        args: ["--fix"]  # 可选：自动修复问题，也可以只用 "." 或加其他参数
+        args: ["--fix"]
+        stages: [commit]
