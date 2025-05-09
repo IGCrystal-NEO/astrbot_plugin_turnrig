@@ -54,7 +54,7 @@ class CommandHandlers:
         session_id = str(session_id)
             
         # 处理单独的"群聊"或"私聊"关键词
-        if session_id == "群聊" or session_id == "私聊":
+        if session_id == "群聊"or session_id == "私聊":
             logger.warning(f"检测到单独的'{session_id}'关键词，需要提供完整的会话ID格式：{session_id} <ID>")
             return session_id
         
@@ -316,17 +316,58 @@ class CommandHandlers:
         # 获取并验证任务
         task, error_msg = self._get_validated_task(event, task_id)
         if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig monitor <任务ID> 群聊 <会话ID>")
+            return event.plain_result(error_msg + "\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>")
         
-        # 提取会话ID
+        # 获取原始命令文本用于日志
         cmd_text = event.message_str
         if not cmd_text and hasattr(event.message_obj, 'raw_message'):
             cmd_text = str(event.message_obj.raw_message)
         logger.info(f"处理监听源添加命令: {cmd_text}")
         
-        full_session_id = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        # 确保类型转换，防止整数类型导致的错误
+        if chat_type is not None:
+            chat_type = str(chat_type)
+        if chat_id is not None:
+            chat_id = str(chat_id)
+        
+        # 检查是否直接传入了完整会话ID
+        full_session_id = None
+        if chat_type and ':' in chat_type:  # 如果chat_type看起来像一个完整的会话ID
+            # 直接使用chat_type作为会话ID
+            full_session_id = self._ensure_full_session_id(chat_type)
+            logger.info(f"检测到完整会话ID: {full_session_id}")
+        # 检查是否为纯数字（没有指定类型的会话ID）
+        elif chat_type and chat_type.isdigit() and not chat_id:
+            # 发现纯数字ID，要求用户明确指定群聊或私聊
+            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig monitor {task_id} 群聊 {chat_type}")
+        else:
+            # 分析原始命令文本
+            parts = cmd_text.split()
+            # 查找 "群聊" 或 "私聊" 关键字
+            for i, part in enumerate(parts):
+                if part in ["群聊", "私聊"] and i+1 < len(parts):
+                    # 构造会话ID组合
+                    session_id_text = f"{part} {parts[i+1]}"
+                    full_session_id = self._ensure_full_session_id(session_id_text)
+                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_session_id}")
+                    break
+            
+            # 如果上面的方法失败，尝试常规处理流程
+            if not full_session_id:
+                # 检查基本参数
+                if not chat_type or chat_type not in ["群聊", "私聊"]:
+                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>")
+                
+                if not chat_id:
+                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig monitor <任务ID> {chat_type} <会话ID>")
+                
+                # 使用参数构造会话ID
+                session_id_text = f"{chat_type} {chat_id}"
+                full_session_id = self._ensure_full_session_id(session_id_text)
+                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_session_id}")
+        
         if not full_session_id:
-            return event.plain_result("请提供要监听的会话ID喵～\n正确格式：/turnrig monitor <任务ID> 群聊 <会话ID>")
+            return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig monitor <任务ID> 群聊/私聊 <会话ID>\n或者：/turnrig monitor <任务ID> <完整会话ID>")
         
         # 判断是群聊还是私聊
         if "GroupMessage" in full_session_id:
@@ -356,17 +397,60 @@ class CommandHandlers:
         # 获取并验证任务
         task, error_msg = self._get_validated_task(event, task_id)
         if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig unmonitor <任务ID> 群聊 <会话ID>")
+            return event.plain_result(error_msg + "\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>")
         
-        # 提取会话ID
+        # 获取原始命令文本用于日志
         cmd_text = event.message_str
         if not cmd_text and hasattr(event.message_obj, 'raw_message'):
             cmd_text = str(event.message_obj.raw_message)
         logger.info(f"处理监听源删除命令: {cmd_text}")
         
-        full_session_id = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        # 确保类型转换
+        if chat_type is not None:
+            chat_type = str(chat_type)
+        if chat_id is not None:
+            chat_id = str(chat_id)
+        
+        # 直接尝试从命令文本中提取会话类型和ID
+        full_session_id = None
+        
+        # 检查是否直接传入了完整会话ID (带冒号的格式)
+        if chat_type and ':' in chat_type:
+            # 直接使用chat_type作为会话ID
+            full_session_id = self._ensure_full_session_id(chat_type)
+            logger.info(f"检测到完整会话ID: {full_session_id}")
+        # 检查是否为纯数字ID
+        elif chat_type and chat_type.isdigit() and not chat_id:
+            # 发现纯数字ID，要求用户明确指定群聊或私聊
+            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig unmonitor {task_id} 群聊 {chat_type}")
+        else:
+            # 分析原始命令文本
+            parts = cmd_text.split()
+            # 查找 "群聊" 或 "私聊" 关键字
+            for i, part in enumerate(parts):
+                if part in ["群聊", "私聊"] and i+1 < len(parts):
+                    # 构造会话ID组合
+                    session_id_text = f"{part} {parts[i+1]}"
+                    full_session_id = self._ensure_full_session_id(session_id_text)
+                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_session_id}")
+                    break
+            
+            # 如果上面的方法失败，尝试常规处理流程
+            if not full_session_id:
+                # 检查基本参数
+                if not chat_type or chat_type not in ["群聊", "私聊"]:
+                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>")
+                
+                if not chat_id:
+                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig unmonitor <任务ID> {chat_type} <会话ID>")
+                
+                # 使用参数构造会话ID
+                session_id_text = f"{chat_type} {chat_id}"
+                full_session_id = self._ensure_full_session_id(session_id_text)
+                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_session_id}")
+        
         if not full_session_id:
-            return event.plain_result("请提供要删除的会话ID喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊 <会话ID>")
+            return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>\n或者：/turnrig unmonitor <任务ID> <完整会话ID>")
         
         # 判断是群聊还是私聊
         if "GroupMessage" in full_session_id:
@@ -384,7 +468,7 @@ class CommandHandlers:
             else:
                 return event.plain_result(f"用户 {full_session_id} 不在私聊监听列表中喵～")
         else:
-            return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～")
+            return event.plain_result(f"无法识别会话ID格式: {full_session_id}，请检查输入喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>\n或者：/turnrig unmonitor <任务ID> <完整会话ID>")
 
     async def handle_add_target(self, event: AstrMessageEvent, task_id: str = None, chat_type: str = None, chat_id: str = None, *args):
         """添加转发目标喵～"""
@@ -398,23 +482,43 @@ class CommandHandlers:
         if error_msg:
             return event.plain_result(error_msg + "\n正确格式：/turnrig target <任务ID> 群聊 <会话ID>")
         
-        # 强制检查是否提供了群聊/私聊参数
-        if not chat_type or chat_type not in ["群聊", "私聊"]:
-            return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig target <任务ID> 群聊/私聊 <会话ID>")
-        
-        # 检查是否提供了会话ID
-        if not chat_id:
-            return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig target <任务ID> {chat_type} <会话ID>")
-        
-        # 提取会话ID
+        # 获取原始命令文本用于日志
         cmd_text = event.message_str
         if not cmd_text and hasattr(event.message_obj, 'raw_message'):
             cmd_text = str(event.message_obj.raw_message)
         logger.info(f"处理转发目标添加命令: {cmd_text}")
         
-        full_target_session = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        # 确保类型转换，防止整数类型导致的错误
+        if chat_type is not None:
+            chat_type = str(chat_type)
+        if chat_id is not None:
+            chat_id = str(chat_id)
+        
+        # 检查是否直接传入了完整会话ID
+        full_target_session = None
+        if chat_type and isinstance(chat_type, str) and ':' in chat_type:  # 检查类型并确保是字符串
+            # 直接使用chat_type作为会话ID
+            full_target_session = self._ensure_full_session_id(chat_type)
+            logger.info(f"检测到完整会话ID: {full_target_session}")
+        # 检查是否为纯数字（没有指定类型的会话ID）
+        elif chat_type and chat_type.isdigit() and not chat_id:
+            # 发现纯数字ID，要求用户明确指定群聊或私聊
+            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig target <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig target {task_id} 群聊 {chat_type}")
+        else:
+            # 常规处理流程
+            # 强制检查是否提供了群聊/私聊参数
+            if not chat_type or chat_type not in ["群聊", "私聊"]:
+                return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig target <任务ID> 群聊/私聊 <会话ID>")
+            
+            # 检查是否提供了会话ID
+            if not chat_id:
+                return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig target <任务ID> {chat_type} <会话ID>")
+            
+            # 提取会话ID
+            full_target_session = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        
         if not full_target_session:
-            return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig target <任务ID> 群聊/私聊 <会话ID>")
+            return event.plain_result("无法识别会话ID格式喵～\n正确格式：\n1. /turnrig target <任务ID> 群聊/私聊 <会话ID>\n2. /turnrig target <任务ID> <完整会话ID>")
         
         if full_target_session not in task.get('target_sessions', []):
             task.setdefault('target_sessions', []).append(full_target_session)
@@ -433,23 +537,59 @@ class CommandHandlers:
         # 获取并验证任务
         task, error_msg = self._get_validated_task(event, task_id)
         if error_msg:
-            return event.plain_result(error_msg + "\n正确格式：/turnrig untarget <任务ID> 群聊 <会话ID>")
+            return event.plain_result(error_msg + "\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
         
-        # 强制检查是否提供了群聊/私聊参数
-        if not chat_type or chat_type not in ["群聊", "私聊"]:
-            return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
-        
-        # 检查是否提供了会话ID
-        if not chat_id:
-            return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig untarget <任务ID> {chat_type} <会话ID>")
-        
-        # 提取会话ID
+        # 获取原始命令文本用于日志
         cmd_text = event.message_str
         if not cmd_text and hasattr(event.message_obj, 'raw_message'):
             cmd_text = str(event.message_obj.raw_message)
         logger.info(f"处理转发目标删除命令: {cmd_text}")
         
-        full_target_session = self._extract_session_id(event, cmd_text, chat_type, chat_id, args)
+        # 确保类型转换
+        if chat_type is not None:
+            chat_type = str(chat_type)
+        if chat_id is not None:
+            chat_id = str(chat_id)
+        
+        # 直接尝试从命令文本中提取会话类型和ID
+        # 这是一种更鲁棒的方式来处理命令参数
+        full_target_session = None
+        
+        # 检查是否直接传入了完整会话ID (带冒号的格式)
+        if chat_type and ':' in chat_type:
+            # 直接使用chat_type作为会话ID
+            full_target_session = self._ensure_full_session_id(chat_type)
+            logger.info(f"检测到完整会话ID: {full_target_session}")
+        # 检查是否为纯数字ID
+        elif chat_type and chat_type.isdigit() and not chat_id:
+            # 发现纯数字ID，要求用户明确指定群聊或私聊
+            return event.plain_result(f"请明确指定会话类型喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>\n例如：/turnrig untarget {task_id} 群聊 {chat_type}")
+        else:
+            # 分析原始命令文本
+            parts = cmd_text.split()
+            # 查找 "群聊" 或 "私聊" 关键字
+            for i, part in enumerate(parts):
+                if part in ["群聊", "私聊"] and i+1 < len(parts):
+                    # 构造会话ID组合
+                    session_id_text = f"{part} {parts[i+1]}"
+                    full_target_session = self._ensure_full_session_id(session_id_text)
+                    logger.info(f"从命令文本提取会话ID: {session_id_text} -> {full_target_session}")
+                    break
+            
+            # 如果上面的方法失败，尝试常规处理流程
+            if not full_target_session:
+                # 检查基本参数
+                if not chat_type or chat_type not in ["群聊", "私聊"]:
+                    return event.plain_result("请明确指定会话类型喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
+                
+                if not chat_id:
+                    return event.plain_result(f"请提供{chat_type}ID喵～\n正确格式：/turnrig untarget <任务ID> {chat_type} <会话ID>")
+                
+                # 使用参数构造会话ID
+                session_id_text = f"{chat_type} {chat_id}"
+                full_target_session = self._ensure_full_session_id(session_id_text)
+                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_target_session}")
+        
         if not full_target_session:
             return event.plain_result("无法识别会话ID格式喵～\n正确格式：/turnrig untarget <任务ID> 群聊/私聊 <会话ID>")
         
