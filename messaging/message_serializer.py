@@ -22,6 +22,39 @@ def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str
         
     for msg in message:
         try:
+            # 检查是否为MFace特殊表情类型
+            # 方法1: 通过类名检测
+            if type(msg).__name__ == 'MFace' or hasattr(msg, 'type') and getattr(msg, 'type') == 'mface':
+                # 提取MFace特殊表情的关键数据
+                mface_data = {
+                    "type": "mface",
+                    "url": getattr(msg, "url", ""),
+                    "emoji_id": getattr(msg, "emoji_id", ""),
+                    "emoji_package_id": getattr(msg, "emoji_package_id", ""),
+                    "summary": getattr(msg, "summary", "[表情]")
+                }
+                
+                # 处理可能位于data字段中的数据
+                if hasattr(msg, "data") and isinstance(msg.data, dict):
+                    for key, value in msg.data.items():
+                        if key not in mface_data or not mface_data[key]:
+                            mface_data[key] = value
+                
+                serialized.append(mface_data)
+                logger.debug(f"序列化MFace特殊表情: {mface_data}")
+                continue
+                
+            # 方法2: 检查原始消息字典数据
+            if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict) and msg.raw_data.get("type") == "mface":
+                mface_data = {
+                    "type": "mface",
+                    "data": msg.raw_data.get("data", {})
+                }
+                serialized.append(mface_data)
+                logger.debug(f"序列化原始MFace数据: {mface_data}")
+                continue
+                
+            # 现有的消息类型处理
             if isinstance(msg, Comp.Plain):
                 text = getattr(msg, "text", "") or ""
                 if text.strip():
@@ -102,6 +135,21 @@ def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str
                     "cover": getattr(msg, "cover", "")
                 })
             else:
+                # 尝试检查是否为mface消息 - 通过更多方式识别
+                if hasattr(msg, '__dict__') and any(key in msg.__dict__ for key in ['emoji_id', 'emoji_package_id']):
+                    mface_data = {
+                        "type": "mface",
+                        "summary": getattr(msg, "summary", "[表情]"),
+                        "url": getattr(msg, "url", ""),
+                    }
+                    for key in ['emoji_id', 'emoji_package_id', 'key']:
+                        if hasattr(msg, key):
+                            mface_data[key] = getattr(msg, key)
+                    serialized.append(mface_data)
+                    logger.debug(f"通过字段识别并序列化MFace: {mface_data}")
+                    continue
+                
+                # 通用未知类型处理
                 data = {"type": "unknown"}
                 if hasattr(msg, "type"):
                     data["original_type"] = msg.type

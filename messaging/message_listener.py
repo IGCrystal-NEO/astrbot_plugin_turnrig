@@ -25,6 +25,10 @@ class MessageListener:
             # 获取消息ID，避免重复处理
             message_id = event.message_obj.message_id
             
+            # 初始化关键变量
+            has_mface = False
+            serialized_messages = []
+            
             # 检查消息是否已经处理过
             if self._is_message_processed(message_id):
                 logger.debug(f"消息 {message_id} 已经处理过，跳过")
@@ -41,7 +45,7 @@ class MessageListener:
                 if plain_text.startswith('/fn ') or plain_text == '/fn':
                     logger.debug(f"消息 {message_id} 是转发指令，跳过监听")
                     return
-            
+                            
             logger.info(f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}")
             # 获取消息平台名称，判断是否为 aiocqhttp
             platform_name = event.get_platform_name()
@@ -82,6 +86,19 @@ class MessageListener:
                 if hasattr(event.message_obj, 'raw_message') and event.message_obj.raw_message:
                     logger.debug(f"从raw_message找到内容: {event.message_obj.raw_message}")
                     messages = [Plain(text=str(event.message_obj.raw_message))]
+            
+            # 在调试原始消息内容部分之后添加
+            if not messages and hasattr(event.message_obj, 'message') and isinstance(event.message_obj.message, list):
+                logger.warning("框架未处理message列表，直接进行处理")
+                # 简单处理为文本消息
+                for msg_part in event.message_obj.message:
+                    if isinstance(msg_part, dict):
+                        if msg_part.get('type') == 'text' and 'data' in msg_part and 'text' in msg_part['data']:
+                            messages.append(Plain(text=msg_part['data']['text']))
+                        elif msg_part.get('type') == 'mface':
+                            # 记录发现了mface，稍后会用专门的逻辑处理
+                            logger.warning(f"在message列表中发现mface项: {msg_part}")
+
             else:
                 components_info = []
                 for i, comp in enumerate(messages):
@@ -93,6 +110,58 @@ class MessageListener:
                         components_info.append(f"[{i}] [{comp_type}]")
                 logger.debug(f"消息组件: {' | '.join(components_info)}")
             
+            # 在序列化消息之前添加直接解析原始事件数据的代码
+            # 强制检查消息原始数据 - 直接处理aicqhttp适配器转发的原始事件
+            if hasattr(event.message_obj, '__dict__'):
+                raw_obj = event.message_obj.__dict__
+                logger.warning(f"强制检查原始消息对象属性: {list(raw_obj.keys())}")
+                
+                # 直接检查是否有特殊表情相关结构
+                if 'message' in raw_obj and isinstance(raw_obj['message'], list):
+                    logger.warning("发现message列表，开始检查特殊表情")
+                    for msg in raw_obj['message']:
+                        if isinstance(msg, dict) and msg.get('type') == 'mface':
+                            has_mface = True
+                            logger.warning(f"直接从__dict__找到mface: {msg}")
+                            
+                            # 提取数据
+                            data = msg.get('data', {})
+                            url = data.get('url', '')
+                            summary = data.get('summary', '[表情]')
+                            emoji_id = data.get('emoji_id', '')
+                            package_id = data.get('emoji_package_id', '')
+                            key = data.get('key', '')
+                            
+                            # 创建图像类型的表情消息
+                            mface_data = {
+                                "type": "image",
+                                "url": url,
+                                "is_mface": True,
+                                "is_gif": True,
+                                "flash": True,
+                                "summary": summary,
+                                "emoji_id": emoji_id,
+                                "emoji_package_id": package_id,
+                                "key": key
+                            }
+                            
+                            # 添加到序列化消息列表
+                            serialized_messages.append(mface_data)
+                            logger.warning(f"从原始对象直接添加特殊表情: {summary} -> {url}")
+
+            # 在开始处理每个任务之前添加
+            # 开始激进检测模式，查找所有可能的mface内容
+            logger.warning(f"开始激进检测mface，原始对象类型: {type(event.message_obj)}")
+            # 打印所有可能的属性
+            for attr_name in dir(event.message_obj):
+                if not attr_name.startswith('_'):
+                    try:
+                        attr_value = getattr(event.message_obj, attr_name)
+                        if 'mface' in str(attr_value).lower():
+                            logger.warning(f"在属性 {attr_name} 中发现可能的mface信息: {attr_value}")
+                    except:
+                        pass
+
             # 处理每个任务
             task_matched = False
             matched_task_ids = []
@@ -141,41 +210,158 @@ class MessageListener:
                 # 确保消息非空 - 优先使用各种方式确保获取到内容
                 has_content = False
                 
-                # 序列化消息
-                serialized_messages = serialize_message(messages)
+                # 序列化消息 - 保存之前已探测到的特殊表情
+                mface_components = [msg for msg in serialized_messages if msg.get('is_mface')]
+                
+                # 重新序列化常规消息
+                task_serialized_messages = serialize_message(messages)
+                
+                # 合并普通消息和特殊表情消息
+                for mface_msg in mface_components:
+                    if mface_msg not in task_serialized_messages:
+                        task_serialized_messages.append(mface_msg)
+                
+                # 更新序列化消息，保留已发现的特殊表情
+                serialized_messages = task_serialized_messages
+                
+                # 重置特殊表情标记，单独检测每个任务
+                task_has_mface = has_mface
+                
+                # 方法1: 直接从message属性获取
+                if not task_has_mface and hasattr(event.message_obj, 'message') and isinstance(event.message_obj.message, list):
+                    logger.warning(f"检查message列表中的mface: {event.message_obj.message}")
+                    for msg in event.message_obj.message:
+                        if isinstance(msg, dict) and msg.get('type') == 'mface':
+                            task_has_mface = True
+                            logger.warning(f"从message列表找到mface: {msg}")
+                            
+                            # 提取数据
+                            data = msg.get('data', {})
+                            url = data.get('url', '')
+                            summary = data.get('summary', '[表情]')
+                            emoji_id = data.get('emoji_id', '')
+                            package_id = data.get('emoji_package_id', '')
+                            key = data.get('key', '')
+                            
+                            # 创建图像类型的表情消息
+                            mface_data = {
+                                "type": "image",
+                                "url": url,
+                                "is_mface": True,
+                                "is_gif": True,
+                                "flash": True,
+                                "summary": summary,
+                                "emoji_id": emoji_id,
+                                "emoji_package_id": package_id,
+                                "key": key
+                            }
+                            
+                            # 添加到序列化消息列表
+                            serialized_messages.append(mface_data)
+                            logger.warning(f"直接添加特殊表情: {summary} -> {url}")
 
-                # 从原始消息中提取图片文件名
-                if hasattr(event.message_obj, 'raw_message') and event.message_obj.raw_message:
+                # 从原始消息中提取图片文件名和处理特殊表情
+                if not task_has_mface and hasattr(event.message_obj, 'raw_message') and event.message_obj.raw_message:
                     try:
                         raw_message = event.message_obj.raw_message
-                        # 检查Event对象的message列表
+                        logger.warning(f"原始消息类型: {type(raw_message)}")
+                        
+                        # 方法2: 检查raw_message对象结构
+                        msg_list = []
+                        
+                        # 先尝试从raw_message对象中获取message列表
                         if hasattr(raw_message, 'message') and isinstance(raw_message.message, list):
-                            for raw_msg in raw_message.message:
-                                if isinstance(raw_msg, dict) and raw_msg.get('type') == 'image' and 'data' in raw_msg:
-                                    extracted_filename = raw_msg['data'].get('filename')
-                                    if extracted_filename:
-                                        logger.debug(f"从原始消息提取到filename: {extracted_filename}")
-                                        # 将filename添加到对应的图片消息组件
-                                        for i, msg in enumerate(serialized_messages):
-                                            if msg.get('type') == 'image':
-                                                serialized_messages[i]['filename'] = extracted_filename
-                                                logger.debug(f"已将filename {extracted_filename} 添加到图片消息")
-                                                break
-                        # 处理raw_message是字典的情况
-                        elif isinstance(raw_message, dict) and 'message' in raw_message and isinstance(raw_message['message'], list):
-                            for raw_msg in raw_message['message']:
-                                if isinstance(raw_msg, dict) and raw_msg.get('type') == 'image' and 'data' in raw_msg:
-                                    extracted_filename = raw_msg['data'].get('filename')
-                                    if extracted_filename:
-                                        logger.debug(f"从原始消息字典提取到filename: {extracted_filename}")
-                                        # 将filename添加到对应的图片消息组件
-                                        for i, msg in enumerate(serialized_messages):
-                                            if msg.get('type') == 'image':
-                                                serialized_messages[i]['filename'] = extracted_filename
-                                                logger.debug(f"已将filename {extracted_filename} 添加到图片消息")
-                                                break
+                            msg_list = raw_message.message
+                            logger.warning(f"从raw_message.message获取列表: {msg_list}")
+                        # 再尝试从raw_message字典中获取message列表
+                        elif isinstance(raw_message, dict) and 'message' in raw_message:
+                            msg_list = raw_message['message']
+                            logger.warning(f"从raw_message字典获取列表: {msg_list}")
+                            
+                        # 处理获取到的消息列表
+                        for raw_msg in msg_list:
+                            # 处理图片
+                            if isinstance(raw_msg, dict) and raw_msg.get('type') == 'image' and 'data' in raw_msg:
+                                extracted_filename = raw_msg['data'].get('filename')
+                                if extracted_filename:
+                                    logger.debug(f"从原始消息提取到filename: {extracted_filename}")
+                                    # 将filename添加到对应的图片消息组件
+                                    for i, msg in enumerate(serialized_messages):
+                                        if msg.get('type') == 'image':
+                                            serialized_messages[i]['filename'] = extracted_filename
+                                            logger.debug(f"已将filename {extracted_filename} 添加到图片消息")
+                                            break
+                            
+                            # 处理特殊表情(mface)
+                            elif isinstance(raw_msg, dict) and raw_msg.get('type') == 'mface':
+                                task_has_mface = True
+                                logger.warning(f"从raw_message列表找到mface: {raw_msg}")
+                                
+                                # 提取表情数据
+                                data = raw_msg.get('data', {})
+                                url = raw_msg.get('url', '') or data.get('url', '')
+                                summary = raw_msg.get('summary', '') or data.get('summary', '[表情]')
+                                emoji_id = raw_msg.get('emoji_id', '') or data.get('emoji_id', '')
+                                package_id = raw_msg.get('emoji_package_id', '') or data.get('emoji_package_id', '')
+                                key = raw_msg.get('key', '') or data.get('key', '')
+                                
+                                # 创建一个图片类型的消息，添加特殊标记
+                                mface_as_image = {
+                                    "type": "image",
+                                    "url": url,
+                                    "is_mface": True,  # 标记为特殊表情
+                                    "is_gif": True,    # 标记为GIF
+                                    "flash": True,     # 使用闪图模式
+                                    "summary": summary,
+                                    "emoji_id": emoji_id,
+                                    "emoji_package_id": package_id,
+                                    "key": key
+                                }
+                                
+                                # 添加到序列化消息列表
+                                serialized_messages.append(mface_as_image)
+                                logger.warning(f"添加特殊表情: {summary} -> {url}")
+                        
+                        # 方法3: 尝试从raw_message字符串中解析mface
+                        if not task_has_mface and hasattr(event.message_obj, 'raw_message'):
+                            raw_str = str(event.message_obj.raw_message)
+                            # 扩展检测条件，包含更多可能的标识
+                            if '[CQ:mface' in raw_str or 'mface' in raw_str.lower():
+                                logger.warning(f"从字符串解析mface: {raw_str}")
+                                
+                                # 尝试从字符串中提取URL和名称
+                                url = ""
+                                summary = "[表情]"
+                                
+                                # 尝试正则匹配URL
+                                import re
+                                url_match = re.search(r'url=(https?://[^,\]]+)', raw_str)
+                                if url_match:
+                                    url = url_match.group(1)
+                                    logger.warning(f"从字符串中提取到URL: {url}")
+                                
+                                # 尝试提取summary
+                                summary_match = re.search(r'summary=([^,\]]+)', raw_str)
+                                if summary_match:
+                                    summary = summary_match.group(1)
+                                    logger.warning(f"从字符串中提取到summary: {summary}")
+                                
+                                # 创建一个通用的mface表情
+                                mface_as_image = {
+                                    "type": "image",
+                                    "url": url,
+                                    "is_mface": True,
+                                    "is_gif": True,
+                                    "flash": True,
+                                    "summary": summary
+                                }
+                                
+                                # 添加到序列化消息列表
+                                serialized_messages.append(mface_as_image)
+                                logger.warning(f"从字符串解析添加特殊表情: {summary} -> {url}")
+                                task_has_mface = True
                     except Exception as e:
-                        logger.error(f"提取filename时出错: {e}", exc_info=True)
+                        logger.error(f"处理图片或特殊表情时出错: {e}", exc_info=True)
 
                 # 如果序列化后没有内容，但原始消息有内容，则直接创建一个纯文本组件
                 if (not serialized_messages or 
@@ -210,6 +396,10 @@ class MessageListener:
                             text = msg.get('text', '')
                             message_outline = text[:30] + ("..." if len(text) > 30 else "")
                             break
+                        # 新增: 为特殊表情添加专门的概要
+                        elif msg.get('type') == 'image' and msg.get('is_mface') and msg.get('summary'):
+                            message_outline = f"[表情:{msg.get('summary')}]"
+                            break
                 
                 # 如果仍然没有概要，但有消息类型，使用类型描述
                 if not message_outline:
@@ -217,12 +407,31 @@ class MessageListener:
                     non_text_types = []
                     for msg in serialized_messages:
                         if msg.get('type') != 'plain' or not msg.get('text'):
-                            non_text_types.append(msg.get('type', 'unknown'))
+                            msg_type = msg.get('type', 'unknown')
+                            # 新增: 为特殊表情提供友好的类型名称
+                            if msg.get('is_mface'):
+                                non_text_types.append('特殊表情')
+                            else:
+                                non_text_types.append(msg_type)
                     
                     if non_text_types:
                         message_outline = f"[{'、'.join(non_text_types)}]"
                     else:
                         message_outline = "[消息]"
+
+                # 在保存消息到缓存之前，添加特殊标记
+                if task_has_mface or has_mface:
+                    message_outline = message_outline or "[特殊表情]"
+                    # 添加特殊标记
+                    for msg in serialized_messages:
+                        if msg.get('is_mface'):
+                            # 确保所有必要的字段都存在
+                            if not msg.get('summary'):
+                                msg['summary'] = "[表情]"
+                            if not msg.get('is_gif'):
+                                msg['is_gif'] = True
+                            if not msg.get('flash'):
+                                msg['flash'] = True
                 
                 # 保存消息到缓存
                 self.plugin.message_cache[task_id][session_id].append({

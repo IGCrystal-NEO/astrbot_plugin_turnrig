@@ -97,6 +97,30 @@ class MessageBuilder:
         
         elif comp_type == 'image':
             return await self._process_image_component(comp)
+        
+        elif comp_type == 'mface':  # 添加对商店表情/特殊表情包的支持
+            # 提取表情数据
+            mface_url = comp.get('url', '')
+            if not mface_url:
+                # URL可能在data子字段中
+                mface_url = comp.get('data', {}).get('url', '')
+            
+            summary = comp.get('summary', '') or comp.get('data', {}).get('summary', '[表情]')
+            
+            # 优先尝试使用图片方式处理
+            if mface_url:
+                image_data = {"type": "image", "data": {"file": mface_url}}
+                # 标记为GIF，因为特殊表情通常是动图
+                image_data["data"]["is_gif"] = True
+                image_data["data"]["flash"] = True 
+                logger.info(f"处理特殊表情: {summary} -> {mface_url}")
+                return image_data
+            else:
+                # 退化为文本处理
+                return {
+                    "type": "text", 
+                    "data": {"text": f"{summary}"}
+                }
             
         elif comp_type == 'at':
             # 获取@的用户名和QQ号
@@ -166,19 +190,55 @@ class MessageBuilder:
         """处理图片组件"""
         image_data = {"type": "image", "data": {}}
         
+        # 检查是否是特殊表情转换来的图片
+        if comp.get('is_mface', False):
+            # 是特殊表情，添加特殊标记
+            logger.warning(f"处理特殊表情(转换自mface): {comp.get('summary', '[表情]')}")
+            
+            # 提取URL和其他信息
+            url = comp.get('url', '')
+            summary = comp.get('summary', '[表情]')
+            emoji_id = comp.get('emoji_id', '')
+            package_id = comp.get('emoji_package_id', '')
+            key = comp.get('key', '')
+            
+            # 添加特殊标记用于表情显示
+            image_data["data"]["is_gif"] = True
+            image_data["data"]["flash"] = True
+            image_data["data"]["file"] = url
+            
+            # 保留原始信息以备后用
+            image_data["data"]["summary"] = summary
+            if emoji_id:
+                image_data["data"]["emoji_id"] = emoji_id
+            if package_id:
+                image_data["data"]["emoji_package_id"] = package_id
+            if key:
+                image_data["data"]["key"] = key
+            
+            # 如果有URL，直接返回处理好的特殊表情图片
+            if url:
+                logger.warning(f"特殊表情处理完成: {summary} -> {url}")
+                return image_data
+            else:
+                logger.warning(f"特殊表情缺少URL，尝试处理为普通图片: {summary}")
+                # 如果没有URL，继续尝试普通图片处理流程
+        
         # 获取图片信息
         url = comp.get('url', '')
         file = comp.get('file', '')
         base64_data = comp.get('base64', '')
         filename = comp.get('filename', '')
         
-        # 检查是否为GIF - 新增！
+        # 检查是否为GIF
         is_gif = False
         if url and url.lower().endswith('.gif'):
             is_gif = True
         elif file and file.lower().endswith('.gif'):
             is_gif = True
         elif filename and filename.lower().endswith('.gif'):
+            is_gif = True
+        elif comp.get('is_gif', False):  # 尊重原始标记
             is_gif = True
         
         # 如果是GIF，添加标记
@@ -192,7 +252,8 @@ class MessageBuilder:
         
         # 处理QQ图片链接
         if ("multimedia.nt.qq.com.cn" in url or "gchat.qpic.cn" in url or 
-            "multimedia.nt.qq.com.cn" in file or "gchat.qpic.cn" in file):
+            "multimedia.nt.qq.com.cn" in file or "gchat.qpic.cn" in file or
+            "gxh.vip.qq.com" in url or "gxh.vip.qq.com" in file):  # 添加表情包域名
             
             # 保存原始URL供后续使用
             original_url = url or file
