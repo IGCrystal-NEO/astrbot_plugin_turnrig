@@ -516,11 +516,19 @@ class MessageListener:
         logger.debug(f"当前任务直接监听的会话: {task.get('monitor_sessions', [])}")
         
         # 新增：检查群是否在monitored_users_in_groups中配置了特定用户监听
+        # 处理monitored_users_in_groups中使用完整会话ID作为键的情况
         if event.get_message_type().name == "GROUP_MESSAGE":
             group_id = event.get_group_id()
             group_id_str = str(group_id) if group_id else ""
+            
+            # 检查纯群号格式
             if group_id_str and group_id_str in task.get('monitored_users_in_groups', {}):
                 logger.debug(f"群 {group_id} 已配置特定用户监听，应监听此会话")
+                return True
+                
+            # 检查完整会话ID格式 - 关键修改！
+            if session_id in task.get('monitored_users_in_groups', {}):
+                logger.debug(f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话")
                 return True
         
         # 最重要的修复：直接检查会话ID是否存在于任务的monitor_groups中
@@ -617,9 +625,16 @@ class MessageListener:
             logger.debug("群ID为空，无法确定群内特定用户，跳过监听")
             return False
             
-        # 获取群中需要监听的用户列表，如果为空则监听所有用户
+        # 获取群中需要监听的用户列表
         group_id_str = str(group_id)
+        session_id = event.unified_msg_origin
+        
+        # 重要修改：同时检查纯群号和完整会话ID两种格式
         monitored_users = task.get('monitored_users_in_groups', {}).get(group_id_str, [])
+        
+        # 如果使用纯群号没有找到，尝试使用完整会话ID
+        if not monitored_users and session_id in task.get('monitored_users_in_groups', {}):
+            monitored_users = task.get('monitored_users_in_groups', {}).get(session_id, [])
         
         # 增加日志，显示该群中监听的用户列表
         logger.debug(f"群 {group_id} 中监听的用户列表: {monitored_users}")
