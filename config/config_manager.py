@@ -28,10 +28,11 @@ class ConfigManager:
             if os.path.exists(self.config_path):
                 backup_path = f"{self.config_path}.bak"
                 import shutil
+
                 shutil.copy2(self.config_path, backup_path)
 
             # 保存新配置
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
 
             logger.info(f"配置已保存到 {self.config_path}")
@@ -52,7 +53,9 @@ class ConfigManager:
                     for task_id, sessions in cache_data.items():
                         session_count = len(sessions)
                         total_msgs = sum(len(msgs) for msgs in sessions.values())
-                        logger.debug(f"任务 {task_id} 缓存: {session_count} 个会话, 共 {total_msgs} 条消息")
+                        logger.debug(
+                            f"任务 {task_id} 缓存: {session_count} 个会话, 共 {total_msgs} 条消息"
+                        )
 
                     return cache_data
             else:
@@ -68,8 +71,8 @@ class ConfigManager:
             # 获取所有有效的任务ID
             valid_task_ids = set()
             config = self.load_config()
-            if config and 'tasks' in config:
-                valid_task_ids = {str(task.get('id', '')) for task in config['tasks']}
+            if config and "tasks" in config:
+                valid_task_ids = {str(task.get("id", "")) for task in config["tasks"]}
 
             # 清理缓存中不存在的任务
             cleaned_cache = {}

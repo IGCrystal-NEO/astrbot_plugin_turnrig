@@ -1218,7 +1218,6 @@ class MessageSender:
         task_id = str(uuid.uuid4())
 
         try:
-
             # 跟踪已发送消息的ID
             sent_ids = set()
 

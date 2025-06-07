@@ -13,7 +13,9 @@ class DownloadHelper:
     def __init__(self, image_dir=None):
         # 如果未提供路径，使用标准插件数据目录
         if not image_dir:
-            self.image_dir = os.path.join("data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images")
+            self.image_dir = os.path.join(
+                "data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images"
+            )
         else:
             self.image_dir = image_dir
 
@@ -28,10 +30,12 @@ class DownloadHelper:
             filepath = os.path.join(self.image_dir, filename)
 
             # 检查是否为 QQ 图片服务器链接
-            is_qq_multimedia = "multimedia.nt.qq.com.cn" in url or "gchat.qpic.cn" in url
+            is_qq_multimedia = (
+                "multimedia.nt.qq.com.cn" in url or "gchat.qpic.cn" in url
+            )
 
             # 检查是否为GIF - 新增逻辑
-            is_gif = file_type.lower() == "gif" or url.lower().endswith('.gif')
+            is_gif = file_type.lower() == "gif" or url.lower().endswith(".gif")
             if is_gif:
                 logger.info(f"正在下载GIF图片: {url}")
 
@@ -41,8 +45,10 @@ class DownloadHelper:
                     requests.get,
                     url,
                     timeout=30,
-                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'},
-                    verify=False
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
+                    },
+                    verify=False,
                 )
 
                 if response.status_code == 200:
@@ -54,41 +60,48 @@ class DownloadHelper:
                         # 检查文件头
                         with open(filepath, "rb") as f:
                             header = f.read(6)
-                        if header.startswith(b'GIF'):
+                        if header.startswith(b"GIF"):
                             logger.info(f"成功下载GIF动图: {filepath}")
                         else:
-                            logger.warning(f"下载的GIF文件头无效，可能不是真正的GIF: {filepath}")
+                            logger.warning(
+                                f"下载的GIF文件头无效，可能不是真正的GIF: {filepath}"
+                            )
 
                     return filepath
                 else:
-                    logger.warning(f"请求下载失败，状态码: {response.status_code}，尝试使用curl")
+                    logger.warning(
+                        f"请求下载失败，状态码: {response.status_code}，尝试使用curl"
+                    )
             except Exception as e:
                 logger.warning(f"请求下载出错: {e}，尝试使用curl")
 
             # 方法2: 使用curl下载，对GIF更为友好
             try:
-
                 # 构建curl命令
                 cmd = [
                     "curl",
-                    "-s",                   # 静默模式
-                    "-L",                   # 跟随重定向
-                    "-o", filepath,         # 输出文件
-                    "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
-                    url
+                    "-s",  # 静默模式
+                    "-L",  # 跟随重定向
+                    "-o",
+                    filepath,  # 输出文件
+                    "-H",
+                    "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+                    url,
                 ]
 
                 # 执行curl命令
                 process = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
 
                 stdout, stderr = await process.communicate()
 
                 # 检查下载结果
-                if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+                if (
+                    process.returncode == 0
+                    and os.path.exists(filepath)
+                    and os.path.getsize(filepath) > 0
+                ):
                     if is_gif:
                         logger.info(f"使用curl成功下载GIF: {filepath}")
                     return filepath
@@ -136,7 +149,7 @@ class DownloadHelper:
 
         # 检查缓存以避免重复下载
         cache_key = f"img_cache_{hash(image_url)}"
-        if hasattr(self, 'plugin') and self.plugin and hasattr(self.plugin, 'config'):
+        if hasattr(self, "plugin") and self.plugin and hasattr(self.plugin, "config"):
             cached_path = self.plugin.config.get(cache_key, "")
             if cached_path and os.path.exists(cached_path):
                 logger.debug(f"使用缓存的图片: {cached_path}")
@@ -155,14 +168,18 @@ class DownloadHelper:
                 result = await self.download_file(image_url, file_type)
                 if result:
                     # 缓存结果
-                    if hasattr(self, 'plugin') and self.plugin and hasattr(self.plugin, 'config'):
+                    if (
+                        hasattr(self, "plugin")
+                        and self.plugin
+                        and hasattr(self.plugin, "config")
+                    ):
                         self.plugin.config[cache_key] = result
                     return result
 
-                logger.warning(f"下载图片失败，尝试 {attempt+1}/3")
+                logger.warning(f"下载图片失败，尝试 {attempt + 1}/3")
                 await asyncio.sleep(1)  # 重试前等待
             except Exception as e:
-                logger.error(f"下载图片异常 (尝试 {attempt+1}/3): {e}")
+                logger.error(f"下载图片异常 (尝试 {attempt + 1}/3): {e}")
                 await asyncio.sleep(1)  # 重试前等待
 
         logger.error(f"多次尝试后下载图片失败: {image_url}")

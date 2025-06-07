@@ -37,16 +37,23 @@ class MessageListener:
             plain_text = event.message_str
             if plain_text:
                 # 检查是否为插件的指令前缀
-                if plain_text.startswith("/tr ") or plain_text.startswith("/turnrig ") or plain_text == "/tr" or plain_text == "/turnrig":
+                if (
+                    plain_text.startswith("/tr ")
+                    or plain_text.startswith("/turnrig ")
+                    or plain_text == "/tr"
+                    or plain_text == "/turnrig"
+                ):
                     logger.debug(f"消息 {message_id} 是插件指令，跳过监听")
                     return
                 # 检查是否为转发指令
                 if plain_text.startswith("/fn ") or plain_text == "/fn":
                     logger.debug(f"消息 {message_id} 是转发指令，跳过监听")
-                    return            logger.info(f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}")
+                    return logger.info(
+                        f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}"
+                    )
             # 获取消息平台名称，判断是否为 aiocqhttp
             # platform_name = event.get_platform_name()
-            self.message_count += 1            # 获取已启用的任务
+            self.message_count += 1  # 获取已启用的任务
             enabled_tasks = self.plugin.get_all_enabled_tasks()
             logger.debug(f"获取到 {len(enabled_tasks)} 个已启用任务")
 
@@ -54,23 +61,39 @@ class MessageListener:
             if not plain_text and hasattr(event.message_obj, "message_str"):
                 plain_text = event.message_obj.message_str
 
-            logger.debug(f'收到消息 [{event.get_sender_name()}]: "{plain_text}" (长度: {len(plain_text) if plain_text else 0})')
+            logger.debug(
+                f'收到消息 [{event.get_sender_name()}]: "{plain_text}" (长度: {len(plain_text) if plain_text else 0})'
+            )
 
             # 如果还是没有文本内容，尝试从raw_message中获取
-            if not plain_text and hasattr(event.message_obj, "raw_message") and event.message_obj.raw_message:
+            if (
+                not plain_text
+                and hasattr(event.message_obj, "raw_message")
+                and event.message_obj.raw_message
+            ):
                 # 尝试从raw_message中获取内容
                 try:
-                    logger.debug(f"从raw_message找到内容: {event.message_obj.raw_message}")
+                    logger.debug(
+                        f"从raw_message找到内容: {event.message_obj.raw_message}"
+                    )
                 except Exception:
                     pass
 
             # 获取消息组件
             messages = event.get_messages()
-            if not messages and hasattr(event.message_obj, "message") and isinstance(event.message_obj.message, list):
+            if (
+                not messages
+                and hasattr(event.message_obj, "message")
+                and isinstance(event.message_obj.message, list)
+            ):
                 logger.warning("框架未处理message列表，直接进行处理")
                 # 简单处理为文本消息
                 for msg_part in event.message_obj.message:
-                    if msg_part.get("type") == "text" and "data" in msg_part and "text" in msg_part["data"]:
+                    if (
+                        msg_part.get("type") == "text"
+                        and "data" in msg_part
+                        and "text" in msg_part["data"]
+                    ):
                         messages.append(Plain(text=msg_part["data"]["text"]))
                     elif msg_part.get("type") == "mface":
                         # 检测到特殊表情
@@ -81,11 +104,15 @@ class MessageListener:
                 components_info = []
                 for i, comp in enumerate(messages):
                     comp_type = type(comp).__name__
-                    text_content = comp.text if hasattr(comp, "text") else str(comp)[:30]
+                    text_content = (
+                        comp.text if hasattr(comp, "text") else str(comp)[:30]
+                    )
                     if len(text_content) > 30:
                         text_content = text_content[:30] + "..."
                     if hasattr(comp, "text"):
-                        components_info.append(f'[{i}] [{comp_type}] "{text_content}" (长度: {len(text_content)})')
+                        components_info.append(
+                            f'[{i}] [{comp_type}] "{text_content}" (长度: {len(text_content)})'
+                        )
                     else:
                         components_info.append(f"[{i}] [{comp_type}] {text_content}")
                 logger.debug(f"消息组件: {' | '.join(components_info)}")
@@ -115,7 +142,7 @@ class MessageListener:
                                 "key": key,
                                 "is_mface": True,
                                 "is_gif": True,
-                                "flash": True
+                                "flash": True,
                             }
                             serialized_messages.append(mface_data)
 
@@ -126,7 +153,9 @@ class MessageListener:
                         attr_value = getattr(event.message_obj, attr_name)
                         if "mface" in str(attr_value).lower():
                             has_mface = True
-                            logger.warning(f"从属性 {attr_name} 中发现mface内容: {attr_value}")
+                            logger.warning(
+                                f"从属性 {attr_name} 中发现mface内容: {attr_value}"
+                            )
                     except Exception:
                         pass
 
@@ -155,12 +184,18 @@ class MessageListener:
 
                     # 获取消息详情
                     timestamp = int(time.time())
-                    mface_components = [msg for msg in serialized_messages if msg.get("is_mface")]
+                    mface_components = [
+                        msg for msg in serialized_messages if msg.get("is_mface")
+                    ]
 
-                    logger.debug(f"详细消息对象: {event.message_obj.__dict__ if hasattr(event.message_obj, '__dict__') else 'No __dict__'}")
+                    logger.debug(
+                        f"详细消息对象: {event.message_obj.__dict__ if hasattr(event.message_obj, '__dict__') else 'No __dict__'}"
+                    )
 
                     # 序列化消息 - 保存之前已探测到的特殊表情
-                    task_serialized_messages = await async_serialize_message(messages if messages else [])
+                    task_serialized_messages = await async_serialize_message(
+                        messages if messages else []
+                    )
 
                     # 合并普通消息和特殊表情消息
                     for mface_msg in mface_components:
@@ -169,7 +204,11 @@ class MessageListener:
                     serialized_messages = task_serialized_messages
 
                     # 方法1: 直接从message属性获取
-                    if not task_has_mface and hasattr(event.message_obj, "message") and isinstance(event.message_obj.message, list):
+                    if (
+                        not task_has_mface
+                        and hasattr(event.message_obj, "message")
+                        and isinstance(event.message_obj.message, list)
+                    ):
                         for msg in event.message_obj.message:
                             if isinstance(msg, dict) and msg.get("type") == "mface":
                                 task_has_mface = True
@@ -190,20 +229,29 @@ class MessageListener:
                                     "key": key,
                                     "is_mface": True,
                                     "is_gif": True,
-                                    "flash": True
+                                    "flash": True,
                                 }
                                 serialized_messages.append(mface_as_image)
 
                     # 方法2: 检查raw_message对象结构
-                    if not task_has_mface and hasattr(event.message_obj, "raw_message") and event.message_obj.raw_message:
+                    if (
+                        not task_has_mface
+                        and hasattr(event.message_obj, "raw_message")
+                        and event.message_obj.raw_message
+                    ):
                         try:
                             raw_message = event.message_obj.raw_message
                             logger.warning(f"原始消息类型: {type(raw_message)}")
 
-                            if hasattr(raw_message, "message") and isinstance(raw_message.message, list):
+                            if hasattr(raw_message, "message") and isinstance(
+                                raw_message.message, list
+                            ):
                                 msg_list = raw_message.message
                             # 再尝试从raw_message字典中获取message列表
-                            elif isinstance(raw_message, dict) and "message" in raw_message:
+                            elif (
+                                isinstance(raw_message, dict)
+                                and "message" in raw_message
+                            ):
                                 msg_list = raw_message["message"]
                             else:
                                 msg_list = []
@@ -211,27 +259,48 @@ class MessageListener:
                             # 处理获取到的消息列表
                             for raw_msg in msg_list:
                                 # 处理图片消息并提取filename
-                                if isinstance(raw_msg, dict) and raw_msg.get("type") == "image" and "data" in raw_msg:
+                                if (
+                                    isinstance(raw_msg, dict)
+                                    and raw_msg.get("type") == "image"
+                                    and "data" in raw_msg
+                                ):
                                     extracted_filename = raw_msg["data"].get("filename")
                                     if extracted_filename:
-                                        logger.debug(f"从原始消息提取到filename: {extracted_filename}")
+                                        logger.debug(
+                                            f"从原始消息提取到filename: {extracted_filename}"
+                                        )
                                         # 在序列化消息中找到对应的图片并添加filename
                                         for i, msg in enumerate(serialized_messages):
                                             if msg.get("type") == "image":
-                                                serialized_messages[i]["filename"] = extracted_filename
-                                                logger.debug(f"已将filename {extracted_filename} 添加到图片消息")
+                                                serialized_messages[i]["filename"] = (
+                                                    extracted_filename
+                                                )
+                                                logger.debug(
+                                                    f"已将filename {extracted_filename} 添加到图片消息"
+                                                )
                                                 break
 
                                 # 处理特殊表情(mface)
-                                elif isinstance(raw_msg, dict) and raw_msg.get("type") == "mface":
+                                elif (
+                                    isinstance(raw_msg, dict)
+                                    and raw_msg.get("type") == "mface"
+                                ):
                                     task_has_mface = True
-                                    logger.warning(f"从raw_message列表找到mface: {raw_msg}")
+                                    logger.warning(
+                                        f"从raw_message列表找到mface: {raw_msg}"
+                                    )
                                     # 提取表情数据
                                     data = raw_msg.get("data", {})
                                     url = raw_msg.get("url", "") or data.get("url", "")
-                                    summary = raw_msg.get("summary", "") or data.get("summary", "[表情]")
-                                    emoji_id = raw_msg.get("emoji_id", "") or data.get("emoji_id", "")
-                                    package_id = raw_msg.get("emoji_package_id", "") or data.get("emoji_package_id", "")
+                                    summary = raw_msg.get("summary", "") or data.get(
+                                        "summary", "[表情]"
+                                    )
+                                    emoji_id = raw_msg.get("emoji_id", "") or data.get(
+                                        "emoji_id", ""
+                                    )
+                                    package_id = raw_msg.get(
+                                        "emoji_package_id", ""
+                                    ) or data.get("emoji_package_id", "")
                                     key = raw_msg.get("key", "") or data.get("key", "")
 
                                     mface_as_image = {
@@ -243,22 +312,30 @@ class MessageListener:
                                         "key": key,
                                         "is_mface": True,
                                         "is_gif": True,
-                                        "flash": True
+                                        "flash": True,
                                     }
                                     serialized_messages.append(mface_as_image)
                         except Exception as e:
                             logger.error(f"处理原始消息时出错: {e}", exc_info=True)
 
                         # 方法3: 尝试从raw_message字符串中解析mface
-                        if not task_has_mface and hasattr(event.message_obj, "raw_message"):
+                        if not task_has_mface and hasattr(
+                            event.message_obj, "raw_message"
+                        ):
                             raw_str = str(event.message_obj.raw_message)
                             if "[CQ:mface" in raw_str or "mface" in raw_str.lower():
                                 task_has_mface = True
                                 # 尝试提取mface参数
-                                url_match = re.search(r"url=(https?://[^,\]]+)", raw_str)
+                                url_match = re.search(
+                                    r"url=(https?://[^,\]]+)", raw_str
+                                )
                                 summary_match = re.search(r"summary=([^,\]]+)", raw_str)
                                 url = url_match.group(1) if url_match else ""
-                                summary = summary_match.group(1) if summary_match else "[表情]"
+                                summary = (
+                                    summary_match.group(1)
+                                    if summary_match
+                                    else "[表情]"
+                                )
 
                                 mface_as_image = {
                                     "type": "image",
@@ -266,34 +343,51 @@ class MessageListener:
                                     "summary": summary,
                                     "is_mface": True,
                                     "is_gif": True,
-                                    "flash": True
+                                    "flash": True,
                                 }
                                 serialized_messages.append(mface_as_image)
 
                     # 如果序列化后没有内容，但原始消息有内容，则直接创建一个纯文本组件
-                    if (not serialized_messages or
-                        (len(serialized_messages) == 1 and
-                         serialized_messages[0].get("type") == "plain" and
-                         not serialized_messages[0].get("text"))) and plain_text:
+                    if (
+                        not serialized_messages
+                        or (
+                            len(serialized_messages) == 1
+                            and serialized_messages[0].get("type") == "plain"
+                            and not serialized_messages[0].get("text")
+                        )
+                    ) and plain_text:
                         serialized_messages = [{"type": "plain", "text": plain_text}]
                         # 检查是否应该从原始消息中提取更多信息
-                        if hasattr(event.message_obj, "raw_message") and event.message_obj.raw_message:
+                        if (
+                            hasattr(event.message_obj, "raw_message")
+                            and event.message_obj.raw_message
+                        ):
                             raw_text = str(event.message_obj.raw_message)
                             if len(raw_text) > len(plain_text):
                                 serialized_messages[0]["text"] = raw_text
 
                     # 生成消息概要
-                    message_outline = plain_text[:30] + ("..." if len(plain_text) > 30 else "") if plain_text else ""
+                    message_outline = (
+                        plain_text[:30] + ("..." if len(plain_text) > 30 else "")
+                        if plain_text
+                        else ""
+                    )
                     if not message_outline and serialized_messages:
                         # 尝试从序列化消息中生成概要
                         has_content = False
                         for msg in serialized_messages:
                             if msg.get("type") == "plain" and msg.get("text"):
                                 text = msg.get("text", "")
-                                message_outline = text[:30] + ("..." if len(text) > 30 else "")
+                                message_outline = text[:30] + (
+                                    "..." if len(text) > 30 else ""
+                                )
                                 has_content = True
                                 break
-                            elif msg.get("type") == "image" and msg.get("is_mface") and msg.get("summary"):
+                            elif (
+                                msg.get("type") == "image"
+                                and msg.get("is_mface")
+                                and msg.get("summary")
+                            ):
                                 # 新增: 为特殊表情添加专门的概要
                                 message_outline = msg.get("summary", "[表情]")
                                 has_content = True
@@ -310,7 +404,11 @@ class MessageListener:
                                     else:
                                         non_text_types.append(msg_type)
 
-                            message_outline = f"[{', '.join(non_text_types)}]" if non_text_types else "[消息]"
+                            message_outline = (
+                                f"[{', '.join(non_text_types)}]"
+                                if non_text_types
+                                else "[消息]"
+                            )
 
                     # 处理特殊表情的标记
                     if task_has_mface or has_mface:
@@ -326,27 +424,41 @@ class MessageListener:
                                     msg["flash"] = True
 
                     # 检查消息长度限制
-                    max_messages = task.get("max_messages", self.plugin.config.get("default_max_messages", 20))
-                    if len(self.plugin.message_cache[task_id][session_id]) >= max_messages:
-                        self.plugin.message_cache[task_id][session_id].pop(0)                    # 缓存消息
+                    max_messages = task.get(
+                        "max_messages",
+                        self.plugin.config.get("default_max_messages", 20),
+                    )
+                    if (
+                        len(self.plugin.message_cache[task_id][session_id])
+                        >= max_messages
+                    ):
+                        self.plugin.message_cache[task_id][session_id].pop(
+                            0
+                        )  # 缓存消息
                     cached_message = {
                         "id": message_id,
                         "timestamp": timestamp,
                         "sender_name": event.get_sender_name(),
                         "sender_id": event.get_sender_id(),  # 添加发送者ID
                         "messages": serialized_messages,
-                        "message_outline": message_outline
+                        "message_outline": message_outline,
                     }
 
-                    self.plugin.message_cache[task_id][session_id].append(cached_message)
-                    logger.info(f"已缓存消息到任务 {task_id}, 会话 {session_id}, 缓存大小: {len(self.plugin.message_cache[task_id][session_id])}")
+                    self.plugin.message_cache[task_id][session_id].append(
+                        cached_message
+                    )
+                    logger.info(
+                        f"已缓存消息到任务 {task_id}, 会话 {session_id}, 缓存大小: {len(self.plugin.message_cache[task_id][session_id])}"
+                    )
 
                     # 立即保存缓存，确保不丢失数据
                     self.plugin.save_message_cache()
 
                     # 检查是否达到转发条件
                     if self.plugin.forward_manager:
-                        await self.plugin.forward_manager.forward_messages(task_id, session_id)
+                        await self.plugin.forward_manager.forward_messages(
+                            task_id, session_id
+                        )
 
             if not task_matched:
                 logger.debug("没有任务匹配当前消息，消息未被缓存")
@@ -365,8 +477,8 @@ class MessageListener:
             file_message = {
                 "type": "notice",
                 "notice_type": "group_upload",
-                "file": file_info
-            }            # 获取启用的任务并缓存
+                "file": file_info,
+            }  # 获取启用的任务并缓存
             enabled_tasks = self.plugin.get_all_enabled_tasks()
             for task in enabled_tasks:
                 task_id = task.get("id")
@@ -381,7 +493,7 @@ class MessageListener:
                     "timestamp": int(time.time()),
                     "sender_name": event.get_sender_name(),
                     "messages": [file_message],
-                    "message_outline": f"[群文件] {file_info.get('name', '')}"
+                    "message_outline": f"[群文件] {file_info.get('name', '')}",
                 }
 
                 self.plugin.message_cache[task_id][session_id].append(cached_message)
@@ -397,7 +509,10 @@ class MessageListener:
             if key.startswith("processed_message_ids_"):
                 processed_list = self.plugin.config.get(key, [])
                 for processed_msg in processed_list:
-                    if isinstance(processed_msg, dict) and processed_msg.get("id") == message_id:
+                    if (
+                        isinstance(processed_msg, dict)
+                        and processed_msg.get("id") == message_id
+                    ):
                         return True
         return False
 
@@ -411,16 +526,15 @@ class MessageListener:
             self.plugin.config[key] = []
 
         timestamp = int(time.time())
-        self.plugin.config[key].append({
-            "id": message_id,
-            "timestamp": timestamp
-        })
+        self.plugin.config[key].append({"id": message_id, "timestamp": timestamp})
 
         # 保持列表大小，只保留最近的100条记录
         if len(self.plugin.config[key]) > 100:
             self.plugin.config[key] = self.plugin.config[key][-100:]
 
-    def _should_monitor_user(self, task: dict[str, Any], event: AstrMessageEvent) -> bool:
+    def _should_monitor_user(
+        self, task: dict[str, Any], event: AstrMessageEvent
+    ) -> bool:
         """检查是否应该监听特定用户的消息"""
         session_id = event.unified_msg_origin
         logger.debug(f"判断会话 {session_id} 是否应被监听")
@@ -432,13 +546,17 @@ class MessageListener:
         if group_id:
             group_id_str = str(group_id)
             # 处理monitored_users_in_groups中使用完整会话ID作为键的情况
-            if group_id_str and group_id_str in task.get("monitored_users_in_groups", {}):
+            if group_id_str and group_id_str in task.get(
+                "monitored_users_in_groups", {}
+            ):
                 logger.debug(f"群 {group_id} 已配置特定用户监听，应监听此会话")
                 return True
 
             # 检查纯群号格式
             if session_id in task.get("monitored_users_in_groups", {}):
-                logger.debug(f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话")
+                logger.debug(
+                    f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话"
+                )
                 return True
 
         # 最重要的修复：直接检查会话ID是否存在于任务的monitor_groups中
@@ -458,7 +576,9 @@ class MessageListener:
         # 检查群组监听 - 使用多种格式尝试匹配
         if group_id:
             group_id_str = str(group_id) if group_id else ""
-            if group_id_str and any(str(g) == group_id_str for g in task.get("monitor_groups", [])):
+            if group_id_str and any(
+                str(g) == group_id_str for g in task.get("monitor_groups", [])
+            ):
                 logger.debug(f"群号 {group_id} 在监听列表中，应监听此会话")
                 return True
 
@@ -472,7 +592,7 @@ class MessageListener:
             possible_formats = [
                 f"aiocqhttp:GroupMessage:{group_id}",
                 f"aiocqhttp:group_message:{group_id}",
-                group_id_str
+                group_id_str,
             ]
             for fmt in possible_formats:
                 if fmt in task.get("monitor_groups", []):
@@ -482,19 +602,24 @@ class MessageListener:
         user_id = event.get_sender_id()
         if user_id:
             user_id_str = str(user_id) if user_id else ""
-            if user_id_str and any(str(u) == user_id_str for u in task.get("monitor_private_users", [])):
+            if user_id_str and any(
+                str(u) == user_id_str for u in task.get("monitor_private_users", [])
+            ):
                 logger.debug(f"用户ID {user_id} 在私聊监听列表中，应监听此会话")
                 return True
 
             # 检查会话完整ID是否在监听列表中
-            if any(session_id == f"aiocqhttp:FriendMessage:{u}" for u in task.get("monitor_private_users", [])):
+            if any(
+                session_id == f"aiocqhttp:FriendMessage:{u}"
+                for u in task.get("monitor_private_users", [])
+            ):
                 return True
 
             # 尝试其他可能的格式
             possible_formats = [
                 f"aiocqhttp:FriendMessage:{user_id}",
                 f"aiocqhttp:friend_message:{user_id}",
-                user_id_str
+                user_id_str,
             ]
             for fmt in possible_formats:
                 if fmt in task.get("monitor_private_users", []):
@@ -507,7 +632,9 @@ class MessageListener:
 
         return False
 
-    def _should_monitor_group_user(self, task: dict[str, Any], event: AstrMessageEvent) -> bool:
+    def _should_monitor_group_user(
+        self, task: dict[str, Any], event: AstrMessageEvent
+    ) -> bool:
         """检查是否监听群内特定用户"""
         message_type_name = event.get_message_type().name
         group_id = event.get_group_id()
@@ -520,9 +647,15 @@ class MessageListener:
 
         group_id_str = str(group_id)
         # 重要修改：同时检查纯群号和完整会话ID两种格式
-        monitored_users = task.get("monitored_users_in_groups", {}).get(group_id_str, [])
-        if not monitored_users and session_id in task.get("monitored_users_in_groups", {}):
-            monitored_users = task.get("monitored_users_in_groups", {}).get(session_id, [])
+        monitored_users = task.get("monitored_users_in_groups", {}).get(
+            group_id_str, []
+        )
+        if not monitored_users and session_id in task.get(
+            "monitored_users_in_groups", {}
+        ):
+            monitored_users = task.get("monitored_users_in_groups", {}).get(
+                session_id, []
+            )
 
         # 如果没有指定用户列表，则监听所有人
         if not monitored_users:
@@ -539,7 +672,9 @@ class MessageListener:
 
         return is_monitored
 
-    def _should_monitor_message(self, task: dict[str, Any], event: AstrMessageEvent) -> bool:
+    def _should_monitor_message(
+        self, task: dict[str, Any], event: AstrMessageEvent
+    ) -> bool:
         """检查是否应该监听此消息喵～（新的统一逻辑）"""
         session_id = event.unified_msg_origin
         # sender_id = event.get_sender_id()
@@ -559,7 +694,9 @@ class MessageListener:
 
             # 检查是否在群内用户监听配置中
             if session_id in task.get("monitored_users_in_groups", {}):
-                logger.debug(f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话")
+                logger.debug(
+                    f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话"
+                )
                 return True
             if group_id in task.get("monitored_users_in_groups", {}):
                 logger.debug(f"群ID {group_id} 存在于群内用户监听配置中，应监听此会话")
@@ -591,7 +728,7 @@ class MessageListener:
                 "is_group": True,
                 "full_id": "aiocqhttp:GroupMessage:123456"
             }
-            如果解析失败则返回None        """
+            如果解析失败则返回None"""
         if not session_id or not isinstance(session_id, str):
             return None
 
@@ -610,5 +747,5 @@ class MessageListener:
             "message_type": message_type,
             "id": id_part,
             "is_group": is_group,
-            "full_id": session_id
+            "full_id": session_id,
         }

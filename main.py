@@ -14,7 +14,13 @@ from .messaging.forward_manager import ForwardManager
 from .messaging.message_listener import MessageListener
 
 
-@register("astrbot_plugin_turnrig", "IGCrystal", "监听并转发消息的插件", "1.0.0", "https://github.com/IGCrystal/astrbot_plugin_turnrig")
+@register(
+    "astrbot_plugin_turnrig",
+    "IGCrystal",
+    "监听并转发消息的插件",
+    "1.0.0",
+    "https://github.com/IGCrystal/astrbot_plugin_turnrig",
+)
 class TurnRigPlugin(Star):
     def __init__(self, context: Context, config=None):
         super().__init__(context)
@@ -29,6 +35,7 @@ class TurnRigPlugin(Star):
 
         # 确保下载助手可以访问临时目录
         from .messaging.forward.download_helper import DownloadHelper
+
         self.download_helper = DownloadHelper(self.temp_dir)
         self.download_helper.plugin = self  # 添加对插件的引用，用于访问配置
 
@@ -36,52 +43,54 @@ class TurnRigPlugin(Star):
         self.config_manager = ConfigManager(self.data_dir)
 
         # 从配置文件加载或使用默认配置
-        self.config = self.config_manager.load_config() or {"tasks": [], "default_max_messages": 20}
+        self.config = self.config_manager.load_config() or {
+            "tasks": [],
+            "default_max_messages": 20,
+        }
 
         # 如果收到了 AstrBot 的配置，且当前配置为空，才使用 AstrBot 配置
         if config and not self.config:
             # 尝试将旧格式配置转换为新格式
-            if isinstance(config, dict) and not config.get('tasks'):
+            if isinstance(config, dict) and not config.get("tasks"):
                 default_task = {
                     "id": "1",  # 使用"1"作为第一个任务的ID
                     "name": "默认任务",
-                    "monitor_groups": config.get('monitor_groups', []),
-                    "monitor_private_users": config.get('monitor_private_users', []),
-                    "monitored_users_in_groups": config.get('monitored_users_in_groups', {}),
-                    "target_sessions": config.get('target_sessions', []),
-                    "max_messages": config.get('max_messages', 20),
-                    "enabled": True
+                    "monitor_groups": config.get("monitor_groups", []),
+                    "monitor_private_users": config.get("monitor_private_users", []),
+                    "monitored_users_in_groups": config.get(
+                        "monitored_users_in_groups", {}
+                    ),
+                    "target_sessions": config.get("target_sessions", []),
+                    "max_messages": config.get("max_messages", 20),
+                    "enabled": True,
                 }
-                self.config = {
-                    "tasks": [default_task],
-                    "default_max_messages": 20
-                }
+                self.config = {"tasks": [default_task], "default_max_messages": 20}
             else:
                 self.config = config
 
         # 确保配置有tasks字段
-        if 'tasks' not in self.config:
-            self.config['tasks'] = []
+        if "tasks" not in self.config:
+            self.config["tasks"] = []
 
         # 确保配置有default_max_messages字段
-        if 'default_max_messages' not in self.config:
-            self.config['default_max_messages'] = 20
+        if "default_max_messages" not in self.config:
+            self.config["default_max_messages"] = 20
 
         # 如果没有任何任务，创建一个自动捕获所有消息的测试任务
-        if not self.config['tasks']:
+        if not self.config["tasks"]:
             logger.info("没有找到任何转发任务，创建一个测试任务")
             test_task = {
                 "id": "test",
                 "name": "测试任务",
-                "monitor_groups": [], # 这里留空以便后续手动添加
+                "monitor_groups": [],  # 这里留空以便后续手动添加
                 "monitor_private_users": [],
                 "monitored_users_in_groups": {},
-                "target_sessions": [], # 这里留空以便后续手动添加
+                "target_sessions": [],  # 这里留空以便后续手动添加
                 "max_messages": 20,
                 "enabled": True,
-                "monitor_sessions": [] # 新增字段，用于直接匹配session_id
+                "monitor_sessions": [],  # 新增字段，用于直接匹配session_id
             }
-            self.config['tasks'].append(test_task)
+            self.config["tasks"].append(test_task)
             self.save_config_file()
 
         # 消息缓存
@@ -96,8 +105,10 @@ class TurnRigPlugin(Star):
         logger.info(f"已加载 {len(self.config.get('tasks', []))} 个转发任务")
 
         # 打印所有任务的详细信息，便于调试
-        for task in self.config.get('tasks', []):
-            logger.info(f"任务ID: {task.get('id')}, 名称: {task.get('name')}, 启用状态: {task.get('enabled')}")
+        for task in self.config.get("tasks", []):
+            logger.info(
+                f"任务ID: {task.get('id')}, 名称: {task.get('name')}, 启用状态: {task.get('enabled')}"
+            )
             logger.info(f"  监听群组: {task.get('monitor_groups', [])}")
             logger.info(f"  监听私聊: {task.get('monitor_private_users', [])}")
             logger.info(f"  群内特定用户: {task.get('monitored_users_in_groups', {})}")
@@ -123,7 +134,9 @@ class TurnRigPlugin(Star):
 
     def _cleanup_invalid_tasks_in_cache(self):
         """清理缓存中不存在的任务"""
-        valid_task_ids = {str(task.get('id', '')) for task in self.config.get('tasks', [])}
+        valid_task_ids = {
+            str(task.get("id", "")) for task in self.config.get("tasks", [])
+        }
         invalid_tasks = []
 
         # 检查消息缓存中的任务
@@ -133,7 +146,9 @@ class TurnRigPlugin(Star):
                 del self.message_cache[task_id]
 
         if invalid_tasks:
-            logger.info(f"已清理 {len(invalid_tasks)} 个无效任务的缓存: {', '.join(invalid_tasks)}")
+            logger.info(
+                f"已清理 {len(invalid_tasks)} 个无效任务的缓存: {', '.join(invalid_tasks)}"
+            )
             self.save_message_cache()
 
     def save_config_file(self):
@@ -152,12 +167,16 @@ class TurnRigPlugin(Star):
             total_messages += messages_in_task
             cache_stats[task_id] = {
                 "sessions": session_count,
-                "messages": messages_in_task
+                "messages": messages_in_task,
             }
 
-        logger.info(f"保存消息缓存，共 {len(cache_stats)} 个任务，{total_messages} 条消息")
+        logger.info(
+            f"保存消息缓存，共 {len(cache_stats)} 个任务，{total_messages} 条消息"
+        )
         for task_id, stats in cache_stats.items():
-            logger.info(f"  任务 {task_id}: {stats['sessions']} 个会话，共 {stats['messages']} 条消息")
+            logger.info(
+                f"  任务 {task_id}: {stats['sessions']} 个会话，共 {stats['messages']} 条消息"
+            )
 
         self.config_manager.save_message_cache(self.message_cache)
 
@@ -178,7 +197,9 @@ class TurnRigPlugin(Star):
                     for session_id, messages in sessions.items():
                         # 检查长时间未活跃的会话
                         if messages and time.time() - messages[-1]["timestamp"] > 3600:
-                            logger.debug(f"会话 {session_id} 在任务 {task_id} 中超过1小时未活动")
+                            logger.debug(
+                                f"会话 {session_id} 在任务 {task_id} 中超过1小时未活动"
+                            )
 
                 # 移除主动获取历史消息的功能
                 # 只依赖消息监听器来记录新消息
@@ -186,7 +207,9 @@ class TurnRigPlugin(Star):
             except Exception as e:
                 logger.error(f"消息监听循环错误: {e}")
 
-            await asyncio.sleep(60)  # 每60秒检查一次，因为不再主动获取消息，可以降低频率
+            await asyncio.sleep(
+                60
+            )  # 每60秒检查一次，因为不再主动获取消息，可以降低频率
 
     async def _fetch_latest_messages(self, platform, msg_type, chat_id):
         """禁用从指定平台获取最新消息的功能"""
@@ -204,21 +227,21 @@ class TurnRigPlugin(Star):
         """通过ID获取任务配置"""
         # 确保转换为字符串进行比较，避免类型不匹配问题
         task_id_str = str(task_id)
-        for task in self.config['tasks']:
-            if str(task.get('id', '')) == task_id_str:
+        for task in self.config["tasks"]:
+            if str(task.get("id", "")) == task_id_str:
                 return task
         return None
 
     def get_all_enabled_tasks(self):
         """获取所有启用的任务"""
-        return [task for task in self.config['tasks'] if task.get('enabled', True)]
+        return [task for task in self.config["tasks"] if task.get("enabled", True)]
 
     def get_max_task_id(self):
         """获取当前最大任务ID"""
         max_id = 0
-        for task in self.config['tasks']:
+        for task in self.config["tasks"]:
             try:
-                task_id = int(task.get('id', '0'))
+                task_id = int(task.get("id", "0"))
                 if task_id > max_id:
                     max_id = task_id
             except ValueError:
@@ -241,7 +264,7 @@ class TurnRigPlugin(Star):
                 if cleaned_count > 0:
                     logger.info(f"定期清理: 已删除 {cleaned_count} 个过期消息ID")
             except Exception as e:
-                logger.error(f"清理过期消息ID时出错: {e}")            # 每天运行一次
+                logger.error(f"清理过期消息ID时出错: {e}")  # 每天运行一次
             await asyncio.sleep(86400)  # 24小时 = 86400秒
 
     def cleanup_expired_message_ids(self, days: int = 7) -> int:
@@ -259,15 +282,16 @@ class TurnRigPlugin(Star):
 
         # 查找所有任务的processed_message_ids
         for key in list(self.config.keys()):
-            if key.startswith('processed_message_ids_'):
+            if key.startswith("processed_message_ids_"):
                 if not isinstance(self.config[key], list):
                     continue
 
                 original_count = len(self.config[key])
                 # 过滤掉过期的消息ID
                 self.config[key] = [
-                    msg for msg in self.config[key]
-                    if isinstance(msg, dict) and msg.get('timestamp', 0) > cutoff_time
+                    msg
+                    for msg in self.config[key]
+                    if isinstance(msg, dict) and msg.get("timestamp", 0) > cutoff_time
                 ]
 
                 cleaned_count = original_count - len(self.config[key])
@@ -322,7 +346,9 @@ class TurnRigPlugin(Star):
         self.save_config_file()
 
         # 保存失败消息缓存
-        if hasattr(self, 'forward_manager') and hasattr(self.forward_manager, 'save_failed_messages_cache'):
+        if hasattr(self, "forward_manager") and hasattr(
+            self.forward_manager, "save_failed_messages_cache"
+        ):
             self.forward_manager.save_failed_messages_cache()
 
         # 取消清理任务
@@ -341,21 +367,30 @@ class TurnRigPlugin(Star):
     @filter.platform_adapter_type(filter.PlatformAdapterType.AIOCQHTTP)
     async def on_all_message(self, event: AstrMessageEvent):
         """监听所有消息并委托给message_listener处理"""
-        logger.info(f"TurnRigPlugin 收到消息: {event.message_str} 从 {event.get_sender_name()}")
+        logger.info(
+            f"TurnRigPlugin 收到消息: {event.message_str} 从 {event.get_sender_name()}"
+        )
         try:
             # 检查是否为群文件上传通知
-            if hasattr(event.message_obj, "notice_type") and event.message_obj.notice_type == "group_upload":
+            if (
+                hasattr(event.message_obj, "notice_type")
+                and event.message_obj.notice_type == "group_upload"
+            ):
                 logger.info("拦截到群文件上传通知事件")
                 await self.message_listener.on_group_upload_notice(event)
-                return MessageEventResult.PASS            # 检查是否为文件类型消息
-            if hasattr(event.message_obj, "message") and isinstance(event.message_obj.message, list):
+                return MessageEventResult.PASS  # 检查是否为文件类型消息
+            if hasattr(event.message_obj, "message") and isinstance(
+                event.message_obj.message, list
+            ):
                 for msg_part in event.message_obj.message:
-                    if isinstance(msg_part, dict) and msg_part.get('type') == 'file':
+                    if isinstance(msg_part, dict) and msg_part.get("type") == "file":
                         logger.info(f"检测到文件类型消息: {msg_part}")
                         break
 
             # 添加简单的直接响应来测试监听器是否被触发
-            logger.info(f"消息平台: {event.get_platform_name()}, 消息类型: {event.get_message_type()}")
+            logger.info(
+                f"消息平台: {event.get_platform_name()}, 消息类型: {event.get_message_type()}"
+            )
             logger.info(f"统一消息来源: {event.unified_msg_origin}")
 
             # 委托给message_listener处理
@@ -364,20 +399,26 @@ class TurnRigPlugin(Star):
         except Exception as e:
             logger.error(f"处理消息时出错: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
-      # 新增方法，用于处理群文件上传事件
+
+    # 新增方法，用于处理群文件上传事件
     @filter.event_message_type(filter.EventMessageType.ALL)
     @filter.platform_adapter_type(filter.PlatformAdapterType.AIOCQHTTP)
     async def on_group_notice(self, event):
         """处理群通知事件"""
         try:
             # 检查是否为文件上传通知
-            if hasattr(event.message_obj, "notice_type") and event.message_obj.notice_type == "group_upload":
+            if (
+                hasattr(event.message_obj, "notice_type")
+                and event.message_obj.notice_type == "group_upload"
+            ):
                 logger.info(f"收到群文件上传通知: {event}")
                 await self.message_listener.on_group_upload_notice(event)
         except Exception as e:
             logger.error(f"处理群通知事件出错: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
         return MessageEventResult().continue_event()
 
@@ -424,45 +465,73 @@ class TurnRigPlugin(Star):
         yield result
 
     @turnrig.command("monitor")
-    async def add_monitor(self, event: AstrMessageEvent, task_id: str = None, session_id: str = None):
+    async def add_monitor(
+        self, event: AstrMessageEvent, task_id: str = None, session_id: str = None
+    ):
         """添加监听源"""
-        result = await self.command_handlers.handle_add_monitor(event, task_id, session_id)
+        result = await self.command_handlers.handle_add_monitor(
+            event, task_id, session_id
+        )
         yield result
 
     @turnrig.command("unmonitor")
-    async def remove_monitor(self, event: AstrMessageEvent, task_id: str = None, session_id: str = None):
+    async def remove_monitor(
+        self, event: AstrMessageEvent, task_id: str = None, session_id: str = None
+    ):
         """删除监听源"""
-        result = await self.command_handlers.handle_remove_monitor(event, task_id, session_id)
+        result = await self.command_handlers.handle_remove_monitor(
+            event, task_id, session_id
+        )
         yield result
 
     @turnrig.command("target")
-    async def add_target(self, event: AstrMessageEvent, task_id: str = None, target_session: str = None):
+    async def add_target(
+        self, event: AstrMessageEvent, task_id: str = None, target_session: str = None
+    ):
         """添加转发目标"""
-        result = await self.command_handlers.handle_add_target(event, task_id, target_session)
+        result = await self.command_handlers.handle_add_target(
+            event, task_id, target_session
+        )
         yield result
 
     @turnrig.command("untarget")
-    async def remove_target(self, event: AstrMessageEvent, task_id: str = None, target_session: str = None):
+    async def remove_target(
+        self, event: AstrMessageEvent, task_id: str = None, target_session: str = None
+    ):
         """删除转发目标"""
-        result = await self.command_handlers.handle_remove_target(event, task_id, target_session)
+        result = await self.command_handlers.handle_remove_target(
+            event, task_id, target_session
+        )
         yield result
 
     @turnrig.command("threshold")
-    async def set_threshold(self, event: AstrMessageEvent, task_id: str = None, threshold: int = None):
+    async def set_threshold(
+        self, event: AstrMessageEvent, task_id: str = None, threshold: int = None
+    ):
         """设置消息阈值"""
-        result = await self.command_handlers.handle_set_threshold(event, task_id, threshold)
+        result = await self.command_handlers.handle_set_threshold(
+            event, task_id, threshold
+        )
         yield result
 
     @turnrig.command("rename")
-    async def rename_task(self, event: AstrMessageEvent, task_id: str = None, new_name: str = None):
+    async def rename_task(
+        self, event: AstrMessageEvent, task_id: str = None, new_name: str = None
+    ):
         """重命名任务"""
-        result = await self.command_handlers.handle_rename_task(event, task_id, new_name)
+        result = await self.command_handlers.handle_rename_task(
+            event, task_id, new_name
+        )
         yield result
 
     @turnrig.command("forward")
-    async def manual_forward(self, event: AstrMessageEvent, task_id: str = None, session_id: str = None):
+    async def manual_forward(
+        self, event: AstrMessageEvent, task_id: str = None, session_id: str = None
+    ):
         """手动触发转发"""
-        result = await self.command_handlers.handle_manual_forward(event, task_id, session_id)
+        result = await self.command_handlers.handle_manual_forward(
+            event, task_id, session_id
+        )
         yield result
 
     @turnrig.command("cleanup")
@@ -472,15 +541,31 @@ class TurnRigPlugin(Star):
         yield result
 
     @turnrig.command("adduser")
-    async def add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
+    async def add_user_in_group(
+        self,
+        event: AstrMessageEvent,
+        task_id: str = None,
+        group_id: str = None,
+        user_id: str = None,
+    ):
         """添加群聊内特定用户到监听列表"""
-        result = await self.command_handlers.handle_add_user_in_group(event, task_id, group_id, user_id)
+        result = await self.command_handlers.handle_add_user_in_group(
+            event, task_id, group_id, user_id
+        )
         yield result
 
     @turnrig.command("removeuser")
-    async def remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, group_id: str = None, user_id: str = None):
+    async def remove_user_from_group(
+        self,
+        event: AstrMessageEvent,
+        task_id: str = None,
+        group_id: str = None,
+        user_id: str = None,
+    ):
         """从监听列表移除群聊内特定用户"""
-        result = await self.command_handlers.handle_remove_user_from_group(event, task_id, group_id, user_id)
+        result = await self.command_handlers.handle_remove_user_from_group(
+            event, task_id, group_id, user_id
+        )
         yield result
 
     @turnrig.command("help")
@@ -526,15 +611,23 @@ class TurnRigPlugin(Star):
         yield result
 
     @tr.command("adduser")
-    async def tr_add_user_in_group(self, event: AstrMessageEvent, task_id: str = None, user_id: str = None):
+    async def tr_add_user_in_group(
+        self, event: AstrMessageEvent, task_id: str = None, user_id: str = None
+    ):
         """将指定用户添加到当前群聊的监听列表"""
-        result = await self.command_handlers.handle_tr_add_user_in_group(event, task_id, user_id)
+        result = await self.command_handlers.handle_tr_add_user_in_group(
+            event, task_id, user_id
+        )
         yield result
 
     @tr.command("removeuser")
-    async def tr_remove_user_from_group(self, event: AstrMessageEvent, task_id: str = None, user_id: str = None):
+    async def tr_remove_user_from_group(
+        self, event: AstrMessageEvent, task_id: str = None, user_id: str = None
+    ):
         """将指定用户从当前群聊的监听列表移除"""
-        result = await self.command_handlers.handle_tr_remove_user_from_group(event, task_id, user_id)
+        result = await self.command_handlers.handle_tr_remove_user_from_group(
+            event, task_id, user_id
+        )
         yield result
 
     @tr.command("help")
