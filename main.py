@@ -263,7 +263,7 @@ class TurnRigPlugin(Star):
             if key.startswith('processed_message_ids_'):
                 if not isinstance(self.config[key], list):
                     continue
-                    
+                
                 original_count = len(self.config[key])
                 # 过滤掉过期的消息ID
                 self.config[key] = [
@@ -338,13 +338,27 @@ class TurnRigPlugin(Star):
         logger.debug("插件已终止，数据已保存")
         
     # 消息监听器，委托给MessageListener类处理
-    # 修改装饰器的顺序，并确保正确使用filter模块
-    @filter.event_message_type(filter.EventMessageType.ALL)
+    # 修改装饰器的顺序，并确保正确使用filter模块    @filter.event_message_type(filter.EventMessageType.ALL)
     @filter.platform_adapter_type(filter.PlatformAdapterType.AIOCQHTTP)
     async def on_all_message(self, event: AstrMessageEvent):
         """监听所有消息并委托给message_listener处理"""
         logger.info(f"TurnRigPlugin 收到消息: {event.message_str} 从 {event.get_sender_name()}")
         try:
+            # 检查是否为群文件上传通知
+            if hasattr(event.message_obj, "notice_type") and event.message_obj.notice_type == "group_upload":
+                logger.info("拦截到群文件上传通知事件")
+                await self.message_listener.on_group_upload_notice(event)
+                return MessageEventResult.PASS
+                
+            # 检查是否为文件类型消息
+            file_detected = False
+            if hasattr(event.message_obj, "message") and isinstance(event.message_obj.message, list):
+                for msg_part in event.message_obj.message:
+                    if isinstance(msg_part, dict) and msg_part.get('type') == 'file':
+                        file_detected = True
+                        logger.info(f"检测到文件类型消息: {msg_part}")
+                        break
+            
             # 添加简单的直接响应来测试监听器是否被触发
             logger.info(f"消息平台: {event.get_platform_name()}, 消息类型: {event.get_message_type()}")
             logger.info(f"统一消息来源: {event.unified_msg_origin}")
@@ -356,7 +370,22 @@ class TurnRigPlugin(Star):
             logger.error(f"处理消息时出错: {e}")
             import traceback
             logger.error(traceback.format_exc())
-    
+      # 新增方法，用于处理群文件上传事件
+    @filter.event_message_type(filter.EventMessageType.ALL)
+    @filter.platform_adapter_type(filter.PlatformAdapterType.AIOCQHTTP)
+    async def on_group_notice(self, event):
+        """处理群通知事件"""
+        try:
+            # 检查是否为文件上传通知
+            if hasattr(event.message_obj, "notice_type") and event.message_obj.notice_type == "group_upload":
+                logger.info(f"收到群文件上传通知: {event}")
+                await self.message_listener.on_group_upload_notice(event)
+        except Exception as e:
+            logger.error(f"处理群通知事件出错: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+        return MessageEventResult().continue_event()
+
     # 命令组定义必须保留在主类中，但实际处理逻辑委托给CommandHandlers类
     @filter.command_group("turnrig")
     async def turnrig(self, event: AstrMessageEvent):

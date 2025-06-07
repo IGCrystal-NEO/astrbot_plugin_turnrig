@@ -59,12 +59,11 @@ class CacheManager:
             logger.debug(f"已将失败消息缓存保存到 {self.cache_path}")
         except Exception as e:
             logger.error(f"保存失败消息缓存时出错: {e}")
-    
     async def periodic_cache_operations(self):
         """定期保存缓存"""
         while True:
             try:
-                await asyncio.sleep(900)  # 每15分钟保存一次
+                await asyncio.sleep(1800)  # 每30分钟保存一次（原来是15分钟）
                 self.save_failed_messages_cache()
             except Exception as e:
                 logger.error(f"定期缓存操作失败: {e}")

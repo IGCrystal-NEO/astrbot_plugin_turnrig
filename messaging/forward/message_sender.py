@@ -94,8 +94,7 @@ class MessageSender:
         # 为每条消息生成任务唯一标识符
         task_id = str(uuid.uuid4())
         
-        try:
-            # 获取群号或用户ID
+        try:            # 获取群号或用户ID
             target_parts = target_session.split(":", 2)
             if len(target_parts) != 3:
                 logger.warning(f"目标会话格式无效: {target_session}")
@@ -103,8 +102,8 @@ class MessageSender:
                 
             target_platform, target_type, target_id = target_parts
             
-            # 清空当前会话的消息跟踪记录
-            self._clear_session_messages(target_session)
+            # 不再清空消息跟踪记录，保持去重功能
+            # self._clear_session_messages(target_session)  # 注释此行以防止重复发送
             
             # 记录转发的节点结构
             logger.debug(f"发送转发消息，共 {len(nodes_list)} 个节点，任务ID: {task_id}")
@@ -144,11 +143,10 @@ class MessageSender:
                 
                 if response and not isinstance(response, Exception):
                     logger.info(f"✅ 任务 {task_id}: 策略1: 使用缓存图片合并转发成功")
-                    
-                    # 标记所有节点为已发送
-                    for node in processed_nodes:
+                      # 标记所有节点为已发送
+                    for i, node in enumerate(processed_nodes):
                         if node.get("type") == "node":
-                            node_id = f"{task_id}_{uuid.uuid4()}"
+                            node_id = f"{task_id}_strategy1_{i}"  # 使用更稳定的ID格式
                             self._add_sent_message(target_session, node_id)
                     
                     return True
@@ -179,11 +177,10 @@ class MessageSender:
                 response = await client.call_action(action, **payload)
                 if response and not isinstance(response, Exception):
                     logger.info(f"✅ 任务 {task_id}: 策略2: 使用下载的原始GIF发送成功")
-                    
-                    # 标记所有节点为已发送
-                    for node in downloaded_gif_nodes:
+                      # 标记所有节点为已发送
+                    for i, node in enumerate(downloaded_gif_nodes):
                         if node.get("type") == "node":
-                            node_id = f"{task_id}_{uuid.uuid4()}"
+                            node_id = f"{task_id}_strategy2_{i}"  # 使用更稳定的ID格式
                             self._add_sent_message(target_session, node_id)
                     
                     return True
@@ -204,11 +201,10 @@ class MessageSender:
                     response = await client.call_action(action, **payload)
                     if response and not isinstance(response, Exception):
                         logger.info(f"✅ 任务 {task_id}: 策略2: GIF转静态图后发送成功")
-                        
-                        # 标记所有节点为已发送
-                        for node in static_nodes:
+                          # 标记所有节点为已发送
+                        for i, node in enumerate(static_nodes):
                             if node.get("type") == "node":
-                                node_id = f"{task_id}_{uuid.uuid4()}"
+                                node_id = f"{task_id}_strategy2_static_{i}"  # 使用更稳定的ID格式
                                 self._add_sent_message(target_session, node_id)
                         
                         return True
@@ -235,11 +231,10 @@ class MessageSender:
                 response = await client.call_action(action, **payload)
                 if response and not isinstance(response, Exception):
                     logger.info(f"✅ 任务 {task_id}: 策略3: 下载图片后合并转发发送成功")
-                    
-                    # 标记所有节点为已发送
-                    for node in updated_nodes:
+                          # 标记所有节点为已发送
+                    for i, node in enumerate(updated_nodes):
                         if node.get("type") == "node":
-                            node_id = f"{task_id}_{uuid.uuid4()}"
+                            node_id = f"{task_id}_strategy3_{i}"  # 使用更稳定的ID格式
                             self._add_sent_message(target_session, node_id)
                     
                     return True
@@ -286,7 +281,7 @@ class MessageSender:
                 local_path = await self._get_local_file_path(file_path, is_gif)
                 if not local_path:
                     continue
-                    
+                
                 # 上传到缓存
                 try:
                     # 优先使用专用图片API
@@ -501,7 +496,7 @@ class MessageSender:
                 "-s",                   # 静默模式
                 "-L",                   # 跟随重定向
                 "-o", output_path,      # 输出文件
-                "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+                "-H", "User-Agent: Mozilla/5.0",
                 url
             ]
             
@@ -612,7 +607,7 @@ class MessageSender:
                 "-s",                   # 静默模式
                 "-L",                   # 跟随重定向
                 "-o", output_path,      # 输出文件
-                "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+                "-H", "User-Agent: Mozilla/5.0",
                 url
             ]
             
@@ -682,15 +677,13 @@ class MessageSender:
             
             # 为每个节点生成唯一ID并按顺序逐条发送消息
             successful_nodes = 0
-            
-            # 创建发送任务列表
+              # 创建发送任务列表
             send_tasks = []
-            for node in nodes_list:
+            for i, node in enumerate(nodes_list):
                 if node["type"] != "node":
                     continue
-                    
                 # 生成节点ID用于跟踪
-                node_id = f"{task_id}_{uuid.uuid4()}"
+                node_id = f"{task_id}_strategy4_{i}"  # 使用更稳定的ID格式
                 
                 # 检查是否已经发送过
                 if self._is_message_sent(target_session, node_id):
@@ -738,7 +731,6 @@ class MessageSender:
         except Exception as e:
             logger.error(f"任务 {task_id}: 创建发送任务失败: {e}")
             return False
-    
     async def _send_node_content(self, target_session: str, target_id: str, node: Dict, node_id: str = None, task_id: str = None) -> bool:
         """发送节点内容
         
@@ -773,9 +765,34 @@ class MessageSender:
             
             message_parts = [Comp.Plain(f"{sender_name}:\n")]
             
+            # 检查是否包含文件消息 - 需要特殊处理
+            has_file_message = False
+            file_url = ""
+            file_name = ""
+            
             # 处理所有内容项
             for item in content:
                 item_type = item.get("type", "")
+                
+                # 新增: 处理文件类型
+                if item_type == "file":
+                    has_file_message = True
+                    file_url = item.get("url", "") or item.get("data", {}).get("url", "")
+                    file_name = item.get("name", "") or item.get("data", {}).get("name", "未命名文件")
+                    logger.info(f"检测到文件类型消息: {file_name}, URL: {file_url}")
+                    # 不添加到message_parts，稍后单独处理
+                    continue
+                
+                # 新增: 检查group_upload事件
+                if item_type == "notice" and item.get("notice_type") == "group_upload":
+                    has_file_message = True
+                    # 从notice事件中提取文件信息
+                    file_info = item.get("file", {})
+                    file_url = file_info.get("url", "")
+                    file_name = file_info.get("name", "群文件")
+                    logger.info(f"检测到群文件上传通知: {file_name}, URL: {file_url}")
+                    # 不添加到message_parts，稍后单独处理
+                    continue
                 
                 if item_type == "text":
                     message_parts.append(Comp.Plain(item["data"].get("text", "")))
@@ -804,7 +821,29 @@ class MessageSender:
                 elif item_type == "at":
                     message_parts.append(Comp.At(qq=item["data"].get("qq", "")))
             
-            # 创建消息链并发送
+            # 如果是文件消息，使用专门的方法处理
+            if has_file_message and file_url:
+                # 先用常规方式发送普通消息部分
+                if message_parts and len(message_parts) > 1:  # 不只是发送者名称
+                    message = MessageChain(message_parts)
+                    try:
+                        if "GroupMessage" in target_session:
+                            await self.plugin.context.send_message(f"aiocqhttp:GroupMessage:{target_id}", message)
+                        else:
+                            await self.plugin.context.send_message(f"aiocqhttp:PrivateMessage:{target_id}", message)
+                    except Exception as e:
+                        logger.warning(f"发送普通部分失败，忽略并继续处理文件: {e}")
+                
+                # 使用文件发送方法处理文件
+                success = await self._download_and_send_file(file_url, file_name, target_session, target_id, sender_name)
+                
+                # 标记为已发送
+                if node_id:
+                    self._add_sent_message(target_session, node_id)
+                    
+                return success
+            
+            # 为普通消息创建消息链并发送
             message = MessageChain(message_parts)
             
             # 使用重试机制发送
@@ -1111,4 +1150,148 @@ class MessageSender:
             
         except Exception as e:
             logger.error(f"任务 {task_id}: 发送消息到非QQ平台失败: {e}")
+            return False    # 新增方法: 处理文件类型的消息
+    async def _download_and_send_file(self, file_url: str, file_name: str, target_session: str, target_id: str, sender_name: str = None) -> bool:
+        """下载并发送文件消息
+        
+        Args:
+            file_url: 文件URL
+            file_name: 文件名
+            target_session: 目标会话ID
+            target_id: 目标ID
+            sender_name: 发送者名称，用于显示在消息中
+            
+        Returns:
+            bool: 发送成功返回True，否则返回False
+        """
+        try:
+            import uuid
+            
+            # 获取客户端
+            client = self.plugin.context.get_platform("aiocqhttp").get_client()
+            
+            # 创建临时下载目录
+            temp_dir = os.path.join("data", "plugins_data", "astrbot_plugin_turnrig", "temp", "files")
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            # 生成临时文件路径
+            temp_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file_name}")
+            
+            logger.info(f"下载文件: {file_url} -> {temp_file_path}")
+            
+            # 下载文件
+            success = await self._download_file_with_curl(file_url, temp_file_path)
+            if not success:
+                logger.error(f"下载文件失败: {file_url}")
+                return False
+                
+            # 文件消息头部，包含发送者信息
+            header = "[文件分享]"
+            if sender_name:
+                header = f"[文件分享] 来自 {sender_name}"
+            
+            # 检查是群聊还是私聊
+            is_group = "GroupMessage" in target_session
+            
+            # 尝试发送文件消息
+            try:
+                # 使用上传文件API
+                api_name = "upload_group_file" if is_group else "upload_private_file"
+                target_param = {"group_id" if is_group else "user_id": int(target_id)}
+                
+                # 发送文件前的提示消息
+                if header:
+                    await client.call_action(
+                        "send_group_msg" if is_group else "send_private_msg",
+                        **target_param,
+                        message=header
+                    )
+                
+                # 上传文件
+                response = await client.call_action(
+                    api_name,
+                    **target_param,
+                    file=temp_file_path,
+                    name=file_name
+                )
+                
+                logger.info(f"文件上传响应: {response}")
+                
+                # 检查响应
+                if isinstance(response, dict) and response.get("status") == "ok":
+                    logger.info(f"成功发送文件: {file_name}")
+                    return True
+                else:
+                    logger.warning(f"文件上传API返回错误: {response}")
+                    # 发送一条链接消息作为备用
+                    await client.call_action(
+                        "send_group_msg" if is_group else "send_private_msg",
+                        **target_param,
+                        message=f"[文件] {file_name}\n下载链接: {file_url}"
+                    )
+                    return True
+            
+            except Exception as e:
+                logger.error(f"发送文件时出错: {e}")
+                
+                # 尝试发送文件下载链接作为备用
+                try:
+                    await client.call_action(
+                        "send_group_msg" if is_group else "send_private_msg",
+                        **target_param,
+                        message=f"[文件] {file_name}\n下载链接: {file_url}"
+                    )
+                    return True
+                except Exception as e2:
+                    logger.error(f"发送文件链接也失败: {e2}")
+                    return False
+                
+        except Exception as e:
+            logger.error(f"处理文件消息时出错: {e}")
+            return False
+
+    async def _download_file_with_curl(self, url: str, output_path: str) -> bool:
+        """使用curl下载文件
+        
+        Args:
+            url: 文件URL
+            output_path: 输出路径
+            
+        Returns:
+            bool: 下载成功返回True，否则返回False
+        """
+        try:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # 构建curl命令
+            cmd = [
+                "curl",
+                "-s",                   # 静默模式
+                "-L",                   # 跟随重定向
+                "-o", output_path,      # 输出文件
+                "-H", "User-Agent: Mozilla/5.0",
+                url
+            ]
+            
+            # 执行curl命令
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            stdout, stderr = await process.communicate()
+            
+            # 检查下载结果
+            if process.returncode == 0 and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                logger.info(f"成功下载文件: {output_path}")
+                return True
+            else:
+                stderr_text = stderr.decode() if stderr else "未知错误"
+                logger.warning(f"下载文件失败: {stderr_text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"下载文件异常: {e}")
+            logger.error(traceback.format_exc())
             return False

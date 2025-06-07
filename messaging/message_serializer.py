@@ -1,50 +1,39 @@
+"""
+消息序列化与反序列化工具
+
+由于AstrBot 3.0+的文件处理逻辑改变，在异步上下文中必须使用异步API获取文件，
+请优先使用 async_serialize_message 和 async_compress_message 函数
+以避免"不可以在异步上下文中同步等待下载"的警告
+"""
+
 import os
 import base64
 import json
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
 
 def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str, Any]]:
-    """将消息组件列表序列化为可存储的格式
+    """将消息组件列表序列化为可存储的格式（同步版本，有文件下载警告）
     
     Args:
         message: 消息组件列表
         
     Returns:
         List[Dict[str, Any]]: 可存储的序列化消息
+        
+    Warning:
+        此函数可能导致"不可以在异步上下文中同步等待下载"警告
+        建议使用 async_serialize_message 异步版本
     """
     serialized = []
     
     if not message:
-        logger.warning("尝试序列化空消息")
-        return [{"type": "plain", "text": "[空消息]"}]
+        return serialized
         
     for msg in message:
         try:
-            # 检查是否为MFace特殊表情类型
-            # 方法1: 通过类名检测
-            if type(msg).__name__ == 'MFace' or hasattr(msg, 'type') and getattr(msg, 'type') == 'mface':
-                # 提取MFace特殊表情的关键数据
-                mface_data = {
-                    "type": "mface",
-                    "url": getattr(msg, "url", ""),
-                    "emoji_id": getattr(msg, "emoji_id", ""),
-                    "emoji_package_id": getattr(msg, "emoji_package_id", ""),
-                    "summary": getattr(msg, "summary", "[表情]")
-                }
-                
-                # 处理可能位于data字段中的数据
-                if hasattr(msg, "data") and isinstance(msg.data, dict):
-                    for key, value in msg.data.items():
-                        if key not in mface_data or not mface_data[key]:
-                            mface_data[key] = value
-                
-                serialized.append(mface_data)
-                logger.debug(f"序列化MFace特殊表情: {mface_data}")
-                continue
-                
-            # 方法2: 检查原始消息字典数据
+            # 处理MFace特殊消息类型
             if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict) and msg.raw_data.get("type") == "mface":
                 mface_data = {
                     "type": "mface",
@@ -52,6 +41,24 @@ def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str
                 }
                 serialized.append(mface_data)
                 logger.debug(f"序列化原始MFace数据: {mface_data}")
+                continue
+            
+            # 识别文件上传通知事件
+            if hasattr(msg, "notice_type") and getattr(msg, "notice_type") == "group_upload":
+                file_data = getattr(msg, "file", {})  # 警告: 同步获取file
+                file_info = {
+                    "type": "notice",
+                    "notice_type": "group_upload",
+                    "file": {
+                        "name": file_data.get("name", ""),
+                        "size": file_data.get("size", 0),
+                        "url": file_data.get("url", ""),
+                        "busid": file_data.get("busid", ""),
+                        "id": file_data.get("id", "")
+                    }
+                }
+                serialized.append(file_info)
+                logger.info(f"序列化群文件上传通知: {file_info}")
                 continue
                 
             # 现有的消息类型处理
@@ -63,8 +70,183 @@ def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str
                     logger.debug("跳过空Plain消息")
             elif isinstance(msg, Comp.Image):
                 url = getattr(msg, "url", "") or ""
-                file = getattr(msg, "file", "") or ""
+                file = getattr(msg, "file", "") or ""  # 警告: 同步获取file
                 base64 = getattr(msg, "base64", "") or ""
+                if url or file or base64:
+                    serialized.append({
+                        "type": "image",
+                        "url": url,
+                        "file": file,
+                        "base64": base64                })
+                else:
+                    logger.debug("跳过空Image消息")
+            elif isinstance(msg, Comp.At):
+                # 尝试从raw_data获取name信息
+                name = getattr(msg, "name", "")
+                qq = getattr(msg, "qq", "")
+                
+                # 调试：输出raw_data结构
+                if hasattr(msg, "raw_data"):
+                    logger.debug(f"At组件raw_data结构: {msg.raw_data}")
+                
+                # 如果name为空，尝试从raw_data中获取
+                if not name and hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                    # 尝试多种可能的路径获取name
+                    raw_name = msg.raw_data.get("data", {}).get("name", "")
+                    if not raw_name:
+                        # 直接从raw_data获取name
+                        raw_name = msg.raw_data.get("name", "")
+                    
+                    if raw_name:
+                        name = raw_name
+                        logger.info(f"从raw_data获取到At组件的name: {raw_name}")
+                    else:
+                        logger.debug(f"raw_data中未找到name信息: {msg.raw_data}")
+                
+                logger.debug(f"序列化At组件: qq={qq}, name='{name}'")
+                serialized.append({"type": "at", "qq": qq, "name": name})
+            elif isinstance(msg, Comp.Record):
+                serialized.append({"type": "record", "url": getattr(msg, "url", ""), "file": getattr(msg, "file", "")})  # 警告: 同步获取file
+            elif isinstance(msg, Comp.File):
+                file_data = {
+                    "type": "file", 
+                    "url": getattr(msg, "url", ""), 
+                    "name": getattr(msg, "name", ""), 
+                    "file": getattr(msg, "file", ""),  # 警告: 同步获取file
+                    "size": getattr(msg, "size", 0),
+                    "busid": getattr(msg, "busid", "")
+                }
+                if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                    for key, val in msg.raw_data.items():
+                        if key not in file_data:
+                            file_data[key] = val
+                serialized.append(file_data)
+            elif isinstance(msg, Comp.Reply):
+                if hasattr(msg, "content") and msg.content:
+                    node_content = [{"type": "plain", "text": msg.content}]
+                else:
+                    node_content = []
+                
+                serialized.append({
+                    "type": "reply",
+                    "data": {
+                        "id": getattr(msg, "id", ""),
+                        "seq": getattr(msg, "seq", 0),
+                        "content": node_content
+                    }
+                })
+            elif isinstance(msg, Comp.Node):
+                node_data = {
+                    "name": getattr(msg, "name", ""),
+                    "uin": getattr(msg, "uin", ""),
+                    "content": [],
+                    "seq": getattr(msg, "seq", ""),
+                    "time": getattr(msg, "time", 0)
+                }
+                
+                if hasattr(msg, "content") and isinstance(msg.content, list):
+                    node_data["content"] = serialize_message(msg.content)
+                
+                serialized.append({
+                    "type": "node",
+                    "data": node_data
+                })
+            elif isinstance(msg, Comp.Face):
+                serialized.append({"type": "face", "id": getattr(msg, "id", "")})
+            else:
+                data = {}
+                for attr in ["text", "url", "id", "name", "uin", "content"]:
+                    if hasattr(msg, attr):
+                        value = getattr(msg, attr, None)
+                        if value is not None:
+                            data[attr] = value
+                            
+                if not data:
+                    continue
+                
+                data["original_type"] = str(type(msg))
+                data["type"] = "unknown"
+                serialized.append(data)
+        except Exception as e:
+            logger.warning(f"序列化消息组件失败: {e}")
+            
+    if not serialized:
+        serialized.append({"type": "plain", "text": "[消息内容无法识别]"})
+        
+    return serialized
+
+async def async_serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str, Any]]:
+    """将消息组件列表异步序列化为可存储的格式 - 修复异步文件获取问题
+    
+    Args:
+        message: 消息组件列表
+        
+    Returns:
+        List[Dict[str, Any]]: 可存储的序列化消息
+    """
+    serialized = []
+    
+    if not message:
+        return serialized
+        
+    for msg in message:
+        try:
+            # 处理MFace特殊消息类型
+            if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict) and msg.raw_data.get("type") == "mface":
+                mface_data = {
+                    "type": "mface",
+                    "data": msg.raw_data.get("data", {})
+                }
+                serialized.append(mface_data)
+                logger.debug(f"序列化原始MFace数据: {mface_data}")
+                continue
+            
+            # 识别文件上传通知事件
+            if hasattr(msg, "notice_type") and getattr(msg, "notice_type") == "group_upload":
+                # 异步获取文件数据
+                file_data = {}
+                if hasattr(msg, "get_file"):
+                    try:
+                        file_data = await msg.get_file()
+                    except Exception as e:
+                        logger.warning(f"异步获取文件数据失败: {e}")
+                        file_data = {}
+                
+                file_info = {
+                    "type": "notice",
+                    "notice_type": "group_upload",
+                    "file": {
+                        "name": file_data.get("name", ""),
+                        "size": file_data.get("size", 0),
+                        "url": file_data.get("url", ""),
+                        "busid": file_data.get("busid", ""),
+                        "id": file_data.get("id", "")
+                    }
+                }
+                serialized.append(file_info)
+                logger.info(f"序列化群文件上传通知: {file_info}")
+                continue
+                
+            # 现有的消息类型处理 - 使用异步方法获取文件数据
+            if isinstance(msg, Comp.Plain):
+                text = getattr(msg, "text", "") or ""
+                if text.strip():
+                    serialized.append({"type": "plain", "text": text})
+                else:
+                    logger.debug("跳过空Plain消息")
+            elif isinstance(msg, Comp.Image):
+                url = getattr(msg, "url", "") or ""
+                file = ""
+                base64 = getattr(msg, "base64", "") or ""
+                
+                # 异步获取文件数据
+                if hasattr(msg, "get_file"):
+                    try:
+                        file = await msg.get_file()
+                        if file:
+                            file = str(file)
+                    except Exception as e:
+                        logger.debug(f"异步获取Image文件数据失败: {e}")
                 
                 if url or file or base64:
                     serialized.append({
@@ -74,103 +256,110 @@ def serialize_message(message: List[Comp.BaseMessageComponent]) -> List[Dict[str
                         "base64": base64
                     })
                 else:
-                    logger.debug("跳过空Image消息")
+                    logger.debug("跳过空Image消息")            
             elif isinstance(msg, Comp.At):
-                serialized.append({"type": "at", "qq": getattr(msg, "qq", ""), "name": getattr(msg, "name", "")})
+                # 尝试从raw_data获取name信息
+                name = getattr(msg, "name", "")
+                qq = getattr(msg, "qq", "")
+                
+                # 如果name为空，尝试从raw_data中获取
+                if not name and hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                    raw_name = msg.raw_data.get("data", {}).get("name", "")
+                    if raw_name:
+                        name = raw_name
+                        logger.info(f"从raw_data获取到At组件的name: {raw_name}")
+                
+                logger.debug(f"异步序列化At组件: qq={qq}, name='{name}'")
+                serialized.append({"type": "at", "qq": qq, "name": name})
             elif isinstance(msg, Comp.Record):
-                serialized.append({"type": "record", "url": getattr(msg, "url", ""), "file": getattr(msg, "file", "")})
+                url = getattr(msg, "url", "") or ""
+                file = ""
+                
+                # 异步获取文件数据
+                if hasattr(msg, "get_file"):
+                    try:
+                        file = await msg.get_file()
+                        if file:
+                            file = str(file)
+                    except Exception as e:
+                        logger.debug(f"异步获取Record文件数据失败: {e}")
+                        
+                serialized.append({"type": "record", "url": url, "file": file})
             elif isinstance(msg, Comp.File):
-                serialized.append({
+                file_data = {
                     "type": "file", 
                     "url": getattr(msg, "url", ""), 
                     "name": getattr(msg, "name", ""), 
-                    "file": getattr(msg, "file", "")
-                })
+                    "file": "",
+                    "size": getattr(msg, "size", 0),
+                    "busid": getattr(msg, "busid", "")
+                }
+                
+                # 异步获取文件数据
+                if hasattr(msg, "get_file"):
+                    try:
+                        file = await msg.get_file()
+                        if file:
+                            file_data["file"] = str(file)
+                    except Exception as e:
+                        logger.debug(f"异步获取File文件数据失败: {e}")
+                
+                if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                    for key, val in msg.raw_data.items():
+                        if key not in file_data:
+                            file_data[key] = val
+                
+                serialized.append(file_data)
             elif isinstance(msg, Comp.Reply):
-                serialized.append({
-                    "type": "reply", 
-                    "id": getattr(msg, "id", ""),
-                    "sender_id": getattr(msg, "sender_id", ""),
-                    "sender_nickname": getattr(msg, "sender_nickname", ""),
-                    "message_str": getattr(msg, "message_str", ""),
-                    "text": getattr(msg, "text", "")
-                })
-            elif isinstance(msg, Comp.Forward):
-                serialized.append({"type": "forward", "id": getattr(msg, "id", "")})
-            elif isinstance(msg, Comp.Node):
-                node_content = []
-                if hasattr(msg, "content"):
-                    if isinstance(msg.content, list):
-                        node_content = serialize_message(msg.content)
-                    elif isinstance(msg.content, str):
-                        node_content = [{"type": "plain", "text": msg.content}]
+                if hasattr(msg, "content") and msg.content:
+                    node_content = [{"type": "plain", "text": msg.content}]
+                else:
+                    node_content = []
                 
                 serialized.append({
-                    "type": "node", 
+                    "type": "reply",
+                    "data": {
+                        "id": getattr(msg, "id", ""),
+                        "seq": getattr(msg, "seq", 0),
+                        "content": node_content
+                    }
+                })
+            elif isinstance(msg, Comp.Node):
+                node_data = {
                     "name": getattr(msg, "name", ""),
                     "uin": getattr(msg, "uin", ""),
-                    "content": node_content,
+                    "content": [],
+                    "seq": getattr(msg, "seq", ""),
                     "time": getattr(msg, "time", 0)
-                })
-            elif isinstance(msg, Comp.Nodes):
-                nodes_list = []
-                if hasattr(msg, "nodes") and msg.nodes:
-                    for node in msg.nodes:
-                        node_data = {
-                            "type": "node", 
-                            "name": getattr(node, "name", ""),
-                            "uin": getattr(node, "uin", ""),
-                            "content": serialize_message(node.content) if hasattr(node, "content") and isinstance(node.content, list) else [],
-                            "time": getattr(node, "time", 0)
-                        }
-                        nodes_list.append(node_data)
-                serialized.append({"type": "nodes", "nodes": nodes_list})
-            elif isinstance(msg, Comp.Face):
-                serialized.append({"type": "face", "id": getattr(msg, "id", 0)})
-            elif isinstance(msg, Comp.Video):
+                }
+                
+                if hasattr(msg, "content") and isinstance(msg.content, list):
+                    node_data["content"] = await async_serialize_message(msg.content)  # 递归使用异步版本
+                
                 serialized.append({
-                    "type": "video", 
-                    "file": getattr(msg, "file", ""),
-                    "url": getattr(msg, "url", ""),
-                    "cover": getattr(msg, "cover", "")
+                    "type": "node",
+                    "data": node_data
                 })
+            elif isinstance(msg, Comp.Face):
+                serialized.append({"type": "face", "id": getattr(msg, "id", "")})
             else:
-                # 尝试检查是否为mface消息 - 通过更多方式识别
-                if hasattr(msg, '__dict__') and any(key in msg.__dict__ for key in ['emoji_id', 'emoji_package_id']):
-                    mface_data = {
-                        "type": "mface",
-                        "summary": getattr(msg, "summary", "[表情]"),
-                        "url": getattr(msg, "url", ""),
-                    }
-                    for key in ['emoji_id', 'emoji_package_id', 'key']:
-                        if hasattr(msg, key):
-                            mface_data[key] = getattr(msg, key)
-                    serialized.append(mface_data)
-                    logger.debug(f"通过字段识别并序列化MFace: {mface_data}")
+                data = {}
+                for attr in ["text", "url", "id", "name", "uin", "content"]:
+                    if hasattr(msg, attr):
+                        value = getattr(msg, attr, None)
+                        if value is not None:
+                            data[attr] = value
+                            
+                if not data:
                     continue
                 
-                # 通用未知类型处理
-                data = {"type": "unknown"}
-                if hasattr(msg, "type"):
-                    data["original_type"] = msg.type
-                else:
-                    data["original_type"] = str(type(msg))
-                    
-                for attr_name in dir(msg):
-                    if not attr_name.startswith("_") and not callable(getattr(msg, attr_name)):
-                        try:
-                            value = getattr(msg, attr_name)
-                            if isinstance(value, (str, int, float, bool)) or value is None:
-                                data[attr_name] = value
-                        except:
-                            pass
+                data["original_type"] = str(type(msg))
+                data["type"] = "unknown"
                 serialized.append(data)
         except Exception as e:
-            logger.error(f"序列化消息组件时出错: {e}, 组件类型: {type(msg).__name__}")
-            serialized.append({"type": "error", "error": str(e), "component_type": str(type(msg).__name__)})
-
+            logger.warning(f"序列化消息组件失败: {e}")
+            
     if not serialized:
-        logger.warning("序列化后消息为空，添加默认消息")
         serialized.append({"type": "plain", "text": "[消息内容无法识别]"})
         
     return serialized
@@ -185,20 +374,18 @@ def deserialize_message(serialized: List[Dict]) -> List[Comp.BaseMessageComponen
         List[Comp.BaseMessageComponent]: 消息组件列表
     """
     components = []
+    
     for msg in serialized:
         try:
             if msg["type"] == "plain":
                 components.append(Comp.Plain(text=msg["text"]))
             elif msg["type"] == "image":
                 if msg.get("base64"):
-                    components.append(Comp.Image(base64=msg["base64"]))
+                    components.append(Comp.Image.frombase64(msg["base64"]))
                 elif msg.get("file") and os.path.exists(msg["file"]):
                     components.append(Comp.Image.fromFileSystem(msg["file"]))
-                elif msg.get("url"):
-                    components.append(Comp.Image.fromURL(msg["url"]))
                 else:
-                    logger.warning(f"图片缺少有效的源: {msg}")
-                    components.append(Comp.Plain(text="[图片无法显示]"))
+                    components.append(Comp.Image.fromURL(msg.get("url", "")))
             elif msg["type"] == "at":
                 components.append(Comp.At(qq=msg["qq"], name=msg.get("name", "")))
             elif msg["type"] == "record":
@@ -222,11 +409,6 @@ def deserialize_message(serialized: List[Dict]) -> List[Comp.BaseMessageComponen
                 ))
             elif msg["type"] == "face":
                 components.append(Comp.Face(id=msg["id"]))
-            elif msg["type"] == "video":
-                if msg.get("file") and os.path.exists(msg["file"]):
-                    components.append(Comp.Video.fromFileSystem(msg["file"]))
-                else:
-                    components.append(Comp.Video.fromURL(msg["url"]))
             elif msg["type"] == "node":
                 node_content = []
                 if msg.get("content"):
@@ -238,41 +420,44 @@ def deserialize_message(serialized: List[Dict]) -> List[Comp.BaseMessageComponen
                     content=node_content,
                     time=msg.get("time", 0)
                 ))
-            elif msg["type"] == "nodes":
-                nodes_list = []
-                for node_data in msg.get("nodes", []):
-                    node_content = []
-                    if node_data.get("content"):
-                        node_content = deserialize_message(node_data["content"])
-                    
-                    node = Comp.Node(
-                        name=node_data.get("name", ""),
-                        uin=node_data.get("uin", ""),
-                        content=node_content,
-                        time=node_data.get("time", 0)
-                    )
-                    nodes_list.append(node)
-                components.append(Comp.Nodes(nodes=nodes_list))
         except Exception as e:
             logger.error(f"反序列化消息组件失败: {e}, 消息数据: {msg}")
             components.append(Comp.Plain(text=f"[消息组件解析错误: {msg.get('type', '未知类型')}]"))
     return components
 
-def serialize_message_compressed(message: List[Comp.BaseMessageComponent]) -> str:
-    """将消息序列化并压缩为base64字符串，减少存储空间
+def compress_message(message: List[Comp.BaseMessageComponent]) -> str:
+    """将消息序列化并压缩为base64字符串，减少存储空间（同步版本）
     
     Args:
         message: 消息组件列表
         
     Returns:
-        str: base64编码的压缩消息数据
+        str: 压缩后的base64字符串
+        
+    Warning:
+        此函数可能导致"不可以在异步上下文中同步等待下载"警告
+        建议使用 async_compress_message 异步版本
     """
     import zlib
+    serialized = serialize_message(message)
+    json_data = json.dumps(serialized)
+    compressed = zlib.compress(json_data.encode("utf-8"))
+    return base64.b64encode(compressed).decode("utf-8")
+
+async def async_compress_message(message: List[Comp.BaseMessageComponent]) -> str:
+    """将消息异步序列化并压缩为base64字符串，减少存储空间
     
-    serialized_data = serialize_message(message)
-    json_data = json.dumps(serialized_data, ensure_ascii=False)
-    compressed = zlib.compress(json_data.encode('utf-8'))
-    return base64.b64encode(compressed).decode('utf-8')
+    Args:
+        message: 消息组件列表
+        
+    Returns:
+        str: 压缩后的base64字符串
+    """
+    import zlib
+    serialized = await async_serialize_message(message)
+    json_data = json.dumps(serialized)
+    compressed = zlib.compress(json_data.encode("utf-8"))
+    return base64.b64encode(compressed).decode("utf-8")
 
 def deserialize_message_compressed(compressed_data: str) -> List[Comp.BaseMessageComponent]:
     """从压缩的base64字符串反序列化消息
@@ -286,10 +471,21 @@ def deserialize_message_compressed(compressed_data: str) -> List[Comp.BaseMessag
     import zlib
     
     try:
-        compressed_bytes = base64.b64decode(compressed_data)
-        json_data = zlib.decompress(compressed_bytes).decode('utf-8')
-        serialized_data = json.loads(json_data)
-        return deserialize_message(serialized_data)
+        decoded = base64.b64decode(compressed_data)
+        decompressed = zlib.decompress(decoded)
+        json_data = decompressed.decode("utf-8")
+        serialized = json.loads(json_data)
+        return deserialize_message(serialized)
     except Exception as e:
         logger.error(f"解压缩消息失败: {e}")
-        return [Comp.Plain(text="[消息解压缩失败]")]
+        return [Comp.Plain(text="[消息解析失败]")]
+
+# 导出函数
+__all__ = [
+    "serialize_message",
+    "async_serialize_message",
+    "deserialize_message",
+    "compress_message",
+    "async_compress_message",
+    "deserialize_message_compressed",
+]

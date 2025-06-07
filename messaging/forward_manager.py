@@ -1,7 +1,7 @@
 import os
-import time
+
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict
 from astrbot.api import logger
 import traceback
 
@@ -23,22 +23,20 @@ class ForwardManager:
         # 创建媒体下载目录
         self.image_dir = os.path.join(self.plugin.data_dir, "temp")
         os.makedirs(self.image_dir, exist_ok=True)
-        
-        # 初始化各个子组件
+          # 初始化各个子组件
         self.download_helper = DownloadHelper(self.image_dir)
-        self.message_builder = MessageBuilder(self.download_helper)
+        self.message_builder = MessageBuilder(self.download_helper, self.plugin)
         self.cache_manager = CacheManager(plugin)
         self.message_sender = MessageSender(plugin, self.download_helper)
         self.retry_manager = RetryManager(plugin, self.cache_manager, self.message_builder, self.message_sender)
         
         # 启动定期重试任务
         asyncio.create_task(self.periodic_retry_operations())
-    
     async def periodic_retry_operations(self):
         """定期重试发送失败的消息"""
         while True:
             try:
-                await asyncio.sleep(900)  # 每15分钟重试一次
+                await asyncio.sleep(3600)  # 每小时重试一次（原来是15分钟）
                 await self.retry_manager.retry_failed_messages()
             except Exception as e:
                 logger.error(f"定期重试操作失败: {e}")
@@ -73,7 +71,7 @@ class ForwardManager:
                 return
                 
             # 检查目标会话
-            target_sessions = task.get('target_sessions', [])
+            target_sessions = task.get("target_sessions", [])
             if not target_sessions:
                 logger.warning(f"任务 {task_id}: 没有设置任何转发目标，跳过转发喵～")
                 return
@@ -83,11 +81,10 @@ class ForwardManager:
             if not messages:
                 logger.warning(f"任务 {task_id}: 会话 {session_id} 没有缓存的消息，跳过转发喵～")
                 return
-            
-            # 筛选有效消息
+              # 筛选有效消息
             valid_messages = []
             for msg in messages:
-                message_components = msg.get('message', [])
+                message_components = msg.get("messages", [])  # 修复：使用正确的字段名
                 
                 if message_components:
                     valid_messages.append(msg)
@@ -156,8 +153,7 @@ class ForwardManager:
                     
                     # 记录失败消息到缓存
                     self.cache_manager.add_failed_message(target_session, task_id, session_id)
-            
-            # 清除已处理的消息缓存
+              # 清除已处理的消息缓存
             self.plugin.message_cache[task_id][session_id] = []
             logger.info(f"任务 {task_id}: 已清除会话 {session_id} 的消息缓存")
             

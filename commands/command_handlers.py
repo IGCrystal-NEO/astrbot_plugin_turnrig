@@ -186,7 +186,6 @@ class CommandHandlers:
         if not cmd_text and hasattr(event.message_obj, 'raw_message'):
             cmd_text = str(event.message_obj.raw_message)
         logger.info(f"处理命令: {cmd_text}")
-        
         return task, cmd_text, None
     
     def _update_session_list(self, task, session_id, list_name, action="add", session_type="会话"):
@@ -194,7 +193,7 @@ class CommandHandlers:
         
         Args:
             task: 任务对象
-            session_id: 会话ID
+            session_id: 完整会话ID（如 aiocqhttp:GroupMessage:123456）
             list_name: 列表名称，如'monitor_groups', 'target_sessions'等
             action: 操作类型，"add" 或 "remove"
             session_type: 会话类型描述，用于响应消息
@@ -204,29 +203,93 @@ class CommandHandlers:
         """
         task_name = task.get('name', '未命名')
         
+        # 解析完整会话ID以确定应该存储到哪个列表
+        parsed_info = self._parse_session_id_info(session_id)
+        if not parsed_info:
+            return f"无法解析会话ID格式: {session_id}，请使用完整的会话ID格式喵～"
+        
+        actual_list_name = list_name
+        actual_id = parsed_info['id']
+        
+        # 根据会话类型决定实际的列表名称和存储的ID
+        if list_name in ['monitor_sessions', 'monitor_groups', 'monitor_private_users']:
+            if parsed_info['is_group']:
+                actual_list_name = 'monitor_groups'
+                session_type = "群聊"
+            else:
+                actual_list_name = 'monitor_private_users'
+                session_type = "私聊用户"
+            
+            # 对于监听列表，我们存储纯ID而不是完整会话ID
+            storage_id = actual_id
+            logger.info(f"监听会话: {session_id} -> 存储到 {actual_list_name}: {storage_id}")
+        else:
+            # 对于其他列表（如target_sessions），存储完整会话ID
+            storage_id = session_id
+            logger.info(f"目标会话: {session_id} -> 存储到 {actual_list_name}: {storage_id}")
+        
         # 确保列表存在
-        if list_name not in task:
-            task[list_name] = []
+        if actual_list_name not in task:
+            task[actual_list_name] = []
             
         # 添加操作
         if action == "add":
-            if session_id not in task[list_name]:
-                task[list_name].append(session_id)
+            if storage_id not in task[actual_list_name]:
+                task[actual_list_name].append(storage_id)
                 self.plugin.save_config_file()
-                return f"已将{session_type} {session_id} 添加到任务 [{task_name}] 的列表中喵～"
+                return f"已将{session_type} {actual_id} 添加到任务 [{task_name}] 的 {actual_list_name} 列表中喵～"
             else:
-                return f"{session_type} {session_id} 已经在任务 [{task_name}] 的列表中了喵～"
+                return f"{session_type} {actual_id} 已经在任务 [{task_name}] 的 {actual_list_name} 列表中了喵～"
         
         # 删除操作
         elif action == "remove":
-            if session_id in task[list_name]:
-                task[list_name].remove(session_id)
+            if storage_id in task[actual_list_name]:
+                task[actual_list_name].remove(storage_id)
                 self.plugin.save_config_file()
-                return f"已将{session_type} {session_id} 从任务 [{task_name}] 的列表中移除喵～"
+                return f"已将{session_type} {actual_id} 从任务 [{task_name}] 的 {actual_list_name} 列表中移除喵～"
             else:
-                return f"{session_type} {session_id} 不在任务 [{task_name}] 的列表中喵～"
+                return f"{session_type} {actual_id} 不在任务 [{task_name}] 的 {actual_list_name} 列表中喵～"
         
         return f"未知操作: {action}"
+
+    def _parse_session_id_info(self, session_id):
+        """解析完整会话ID，提取平台、类型和ID信息
+        
+        Args:
+            session_id: 完整会话ID，如 'aiocqhttp:GroupMessage:123456'
+            
+        Returns:
+            dict: 包含解析结果的字典，格式如下：
+                {
+                    'platform': 'aiocqhttp',
+                    'message_type': 'GroupMessage',
+                    'id': '123456',
+                    'is_group': True/False,
+                    'full_id': 'aiocqhttp:GroupMessage:123456'
+                }
+                如果解析失败则返回None
+        """
+        if not session_id or not isinstance(session_id, str):
+            return None
+            
+        # 检查是否为完整会话ID格式（platform:type:id）
+        parts = session_id.split(':')
+        if len(parts) != 3:
+            logger.warning(f"会话ID格式不正确: {session_id}，期望格式: platform:type:id")
+            return None
+            
+        platform, message_type, id_part = parts
+        
+        # 判断是否为群聊
+        is_group = 'group' in message_type.lower()
+        
+        return {
+            'platform': platform,
+            'message_type': message_type,
+            'id': id_part,
+            'is_group': is_group,
+            'full_id': session_id
+        }
 
     def _extract_session_id(self, event: AstrMessageEvent, cmd_text: str = None, chat_type: str = None, chat_id: str = None, args=None):
         """从命令参数中提取会话ID"""
@@ -455,14 +518,8 @@ class CommandHandlers:
             event, cmd_text, chat_type, chat_id, task_id, "monitor")
         if error:
             return error
-        
-        # 根据会话类型更新不同的监听列表
-        if "GroupMessage" in session_id:
-            result = self._update_session_list(task, session_id, 'monitor_groups', "add", "群聊")
-        elif "FriendMessage" in session_id:
-            result = self._update_session_list(task, session_id, 'monitor_private_users', "add", "用户")
-        else:
-            return event.plain_result(f"无法识别会话ID格式: {session_id}，请检查输入喵～\n正确格式示例：群聊 123456 或 私聊 123456")
+          # 根据会话类型更新监听列表（新的逻辑会自动判断群聊还是私聊）
+        result = self._update_session_list(task, session_id, 'monitor_sessions', "add", "会话")
             
         return event.plain_result(result)
 
@@ -479,14 +536,8 @@ class CommandHandlers:
             event, cmd_text, chat_type, chat_id, task_id, "unmonitor")
         if error:
             return error
-        
-        # 根据会话类型更新不同的监听列表
-        if "GroupMessage" in session_id:
-            result = self._update_session_list(task, session_id, 'monitor_groups', "remove", "群聊")
-        elif "FriendMessage" in session_id:
-            result = self._update_session_list(task, session_id, 'monitor_private_users', "remove", "用户")
-        else:
-            return event.plain_result(f"无法识别会话ID格式: {session_id}，请检查输入喵～\n正确格式：/turnrig unmonitor <任务ID> 群聊/私聊 <会话ID>")
+          # 根据会话类型更新监听列表（新的逻辑会自动判断群聊还是私聊）
+        result = self._update_session_list(task, session_id, 'monitor_sessions', "remove", "会话")
             
         return event.plain_result(result)
 
@@ -711,17 +762,11 @@ class CommandHandlers:
         task = self.plugin.get_task_by_id(task_id)
         if not task:
             return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
-        
-        # 自动获取当前会话ID
+          # 自动获取当前会话ID
         current_session = event.unified_msg_origin
         
-        # 根据会话类型更新不同的监听列表
-        if "GroupMessage" in current_session:
-            result = self._update_session_list(task, current_session, 'monitor_groups', "add", "当前群聊")
-        elif "FriendMessage" in current_session:
-            result = self._update_session_list(task, current_session, 'monitor_private_users', "add", "当前私聊用户")
-        else:
-            return event.plain_result(f"当前会话类型不支持添加到监听列表喵～")
+        # 根据会话类型更新监听列表（新的逻辑会自动判断群聊还是私聊）
+        result = self._update_session_list(task, current_session, 'monitor_sessions', "add", "当前会话")
             
         return event.plain_result(result)
 
@@ -738,17 +783,11 @@ class CommandHandlers:
         task = self.plugin.get_task_by_id(task_id)
         if not task:
             return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
-        
-        # 自动获取当前会话ID
+          # 自动获取当前会话ID
         current_session = event.unified_msg_origin
         
-        # 根据会话类型更新不同的监听列表
-        if "GroupMessage" in current_session:
-            result = self._update_session_list(task, current_session, 'monitor_groups', "remove", "当前群聊")
-        elif "FriendMessage" in current_session:
-            result = self._update_session_list(task, current_session, 'monitor_private_users', "remove", "当前私聊用户")
-        else:
-            return event.plain_result(f"当前会话类型不支持从监听列表移除喵～")
+        # 根据会话类型更新监听列表（新的逻辑会自动判断群聊还是私聊）
+        result = self._update_session_list(task, current_session, 'monitor_sessions', "remove", "当前会话")
             
         return event.plain_result(result)
 

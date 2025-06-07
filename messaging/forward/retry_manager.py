@@ -27,11 +27,31 @@ class RetryManager:
                     # 增加重试计数
                     retry_count = self.cache_manager.increment_retry_count(target_session, i)
                     
+                    # 提高放弃阈值，但更智能地处理重试
                     if retry_count > 5:
                         logger.warning(f"消息重试次数超过5次，放弃重试: {msg}")
-                        # messages 是指向 cache_manager 内部缓存的引用，直接操作它会导致索引混乱
-                        # 通过索引确保安全删除
+                        # 从失败缓存中永久删除
+                        self.cache_manager.remove_failed_message(target_session, msg["task_id"], msg["source_session"])
                         continue
+                    
+                    # 根据重试次数指数增加等待时间，避免频繁重试
+                    # 第1次：立即，第2次：1小时，第3次：4小时，第4次：9小时...
+                    # 判断上次重试时间是否足够长
+                    last_retry_time = msg.get("last_retry_time", 0)
+                    current_time = time.time()
+                    
+                    # 计算需要等待的时间（小时）
+                    wait_hours = (retry_count - 1) ** 2
+                    wait_seconds = wait_hours * 3600
+                    
+                    time_since_last_retry = current_time - last_retry_time
+                    if time_since_last_retry < wait_seconds:
+                        # 还没到重试时间，跳过
+                        logger.debug(f"消息重试冷却中，还需等待 {(wait_seconds-time_since_last_retry)/3600:.1f} 小时: {msg}")
+                        continue
+                    
+                    # 更新最后重试时间
+                    msg["last_retry_time"] = current_time
                     
                     task_id = msg["task_id"]
                     source_session = msg["source_session"]
