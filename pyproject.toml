@@ -1,6 +1,60 @@
+# 🐱 猫娘项目的 ruff 配置文件喵～
 [tool.ruff]
-line-length = 100
+# 目标 Python 版本
+target-version = "py312"
+
+# 每行最大字符数 (适合猫娘注释喵～)
+line-length = 88
+
+# 包含的文件路径
+include = ["*.py", "*.pyi"]
+
+# 排除的文件/目录
+exclude = [
+    "__pycache__",
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "build",
+    "dist",
+]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
-ignore = ["E501"]
+# 启用的规则集
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings  
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+
+# 忽略的规则 (保护我们的猫娘注释喵～)
+ignore = [
+    "E501",  # 行太长 (我们的猫娘注释可能比较长喵～)
+    "B008",  # 不要在函数参数中使用可变默认值
+]
+
+# 每个文件的最大复杂度
+mccabe = { max-complexity = 10 }
+
+[tool.ruff.format]
+# 使用双引号
+quote-style = "double"
+
+# 缩进样式
+indent-style = "space"
+
+# 保留魔法尾随逗号
+skip-magic-trailing-comma = false
+
+# 行结束符
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+# import 排序配置
+known-first-party = ["astrbot_plugin_turnrig"]
+combine-as-imports = true
