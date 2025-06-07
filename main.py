@@ -363,7 +363,8 @@ class TurnRigPlugin(Star):
         logger.debug("插件已终止，数据已保存")
 
     # 消息监听器，委托给MessageListener类处理
-    # 修改装饰器的顺序，并确保正确使用filter模块    @filter.event_message_type(filter.EventMessageType.ALL)
+    # 修改装饰器的顺序，并确保正确使用filter模块    
+    @filter.event_message_type(filter.EventMessageType.ALL)
     @filter.platform_adapter_type(filter.PlatformAdapterType.AIOCQHTTP)
     async def on_all_message(self, event: AstrMessageEvent):
         """监听所有消息并委托给message_listener处理"""
