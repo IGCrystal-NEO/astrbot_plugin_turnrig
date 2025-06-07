@@ -24,9 +24,11 @@ class MessageListener:
             # 获取消息ID，避免重复处理
             message_id = event.message_obj.message_id
 
+
             # 初始化关键变量
             has_mface = False
             serialized_messages = []
+
 
             # 检查消息是否已经处理过
             if self._is_message_processed(message_id):
@@ -53,6 +55,7 @@ class MessageListener:
             logger.info(
                 f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}"
             )
+
             # 获取消息平台名称，判断是否为 aiocqhttp
             # platform_name = event.get_platform_name()
             self.message_count += 1  # 获取已启用的任务
@@ -74,6 +77,7 @@ class MessageListener:
                 and event.message_obj.raw_message
             ):
                 # 尝试从raw_message中获取内容
+
                 try:
                     logger.debug(
                         f"从raw_message找到内容: {event.message_obj.raw_message}"
