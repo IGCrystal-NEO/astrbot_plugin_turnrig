@@ -10,11 +10,11 @@
 - 保持消息的完整性喵～ ✨
 """
 
-import os
-import time
 import base64
 import json
-from typing import Dict
+import os
+import time
+
 from .download_helper import DownloadHelper
 
 try:
@@ -40,7 +40,7 @@ class MessageBuilder:
             self.download_helper = download_helper
         self.plugin = plugin
 
-    async def build_forward_node(self, msg_data: Dict) -> Dict:
+    async def build_forward_node(self, msg_data: dict) -> dict:
         """构建单个转发节点
 
         Args:
@@ -159,8 +159,8 @@ class MessageBuilder:
         return node_data
 
     async def _process_component(
-        self, comp_type: str, comp: Dict, timestamp: int
-    ) -> Dict:
+        self, comp_type: str, comp: dict, timestamp: int
+    ) -> dict:
         """处理单个消息组件
 
         Args:
@@ -282,7 +282,7 @@ class MessageBuilder:
                 "data": {"text": f"[不支持的消息类型: {comp_type}]"},
             }
 
-    async def _process_image_component(self, comp: Dict) -> Dict:
+    async def _process_image_component(self, comp: dict) -> dict:
         """处理图片组件"""
         # 检查是否是特殊表情转换来的图片
         if comp.get("is_mface", False):
@@ -406,7 +406,7 @@ class MessageBuilder:
 
         return image_data
 
-    async def _process_record_component(self, comp: Dict) -> Dict:
+    async def _process_record_component(self, comp: dict) -> dict:
         """处理语音组件"""
         record_data = {"type": "record", "data": {}}
 
@@ -441,25 +441,25 @@ class MessageBuilder:
 
         return record_data
 
-    async def _process_video_component(self, comp: Dict) -> Dict:
+    async def _process_video_component(self, comp: dict) -> dict:
         """处理视频组件"""
         return {"type": "text", "data": {"text": "[视频消息]"}}
 
-    async def _process_file_component(self, comp: Dict) -> Dict:
+    async def _process_file_component(self, comp: dict) -> dict:
         """处理文件组件"""
         return {"type": "text", "data": {"text": "[文件消息]"}}
 
-    async def _process_json_component(self, comp: Dict) -> Dict:
+    async def _process_json_component(self, comp: dict) -> dict:
         """处理JSON卡片组件"""
         return {"type": "text", "data": {"text": "[卡片消息]"}}
 
-    async def _process_xml_component(self, comp: Dict) -> Dict:
+    async def _process_xml_component(self, comp: dict) -> dict:
         """处理XML组件"""
         return {"type": "text", "data": {"text": "[XML消息]"}}
 
     def build_footer_node(
         self, source_name: str, message_count: int, is_retry: bool = False
-    ) -> Dict:
+    ) -> dict:
         """构建底部信息节点
 
         Args:

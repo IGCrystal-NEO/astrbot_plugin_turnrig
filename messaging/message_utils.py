@@ -1,5 +1,6 @@
 from astrbot.api import logger
 
+
 async def fetch_message_detail(message_id, event):
     """获取消息详情喵～参考了搬史插件的实现"""
     if event.get_platform_name() != "aiocqhttp":
@@ -13,7 +14,7 @@ async def fetch_message_detail(message_id, event):
         }
         response = await client.api.call_action("get_msg", **payload)
         logger.debug(f"获取到消息详情: {response}")
-        
+
         # 如果是转发消息，尝试获取转发消息的内容
         if response and "message" in response:
             message_list = response["message"]
@@ -33,7 +34,7 @@ async def fetch_message_detail(message_id, event):
                             logger.debug(f"获取到转发消息内容: {forward_response}")
                         except Exception as e:
                             logger.warning(f"获取转发消息内容失败: {e}")
-        
+
         return response
     except Exception as e:
         logger.error(f"获取消息详情失败喵: {e}")

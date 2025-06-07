@@ -35,7 +35,6 @@ select = [
 # 忽略的规则 (保护我们的猫娘注释喵～)
 ignore = [
     "E501",  # 行太长 (我们的猫娘注释可能比较长喵～)
-    "W503",  # 二元运算符前换行
     "B008",  # 不要在函数参数中使用可变默认值
 ]
 
@@ -48,9 +47,6 @@ quote-style = "double"
 
 # 缩进样式
 indent-style = "space"
-
-# 缩进宽度
-indent-width = 4
 
 # 保留魔法尾随逗号
 skip-magic-trailing-comma = false

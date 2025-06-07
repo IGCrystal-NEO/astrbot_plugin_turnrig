@@ -1,6 +1,7 @@
 import re
 import time
-from typing import Dict, Any
+from typing import Any
+
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.message_components import Plain
@@ -419,7 +420,7 @@ class MessageListener:
         if len(self.plugin.config[key]) > 100:
             self.plugin.config[key] = self.plugin.config[key][-100:]
 
-    def _should_monitor_user(self, task: Dict[str, Any], event: AstrMessageEvent) -> bool:
+    def _should_monitor_user(self, task: dict[str, Any], event: AstrMessageEvent) -> bool:
         """检查是否应该监听特定用户的消息"""
         session_id = event.unified_msg_origin
         logger.debug(f"判断会话 {session_id} 是否应被监听")
@@ -506,7 +507,7 @@ class MessageListener:
 
         return False
 
-    def _should_monitor_group_user(self, task: Dict[str, Any], event: AstrMessageEvent) -> bool:
+    def _should_monitor_group_user(self, task: dict[str, Any], event: AstrMessageEvent) -> bool:
         """检查是否监听群内特定用户"""
         message_type_name = event.get_message_type().name
         group_id = event.get_group_id()
@@ -538,7 +539,7 @@ class MessageListener:
 
         return is_monitored
 
-    def _should_monitor_message(self, task: Dict[str, Any], event: AstrMessageEvent) -> bool:
+    def _should_monitor_message(self, task: dict[str, Any], event: AstrMessageEvent) -> bool:
         """检查是否应该监听此消息喵～（新的统一逻辑）"""
         session_id = event.unified_msg_origin
         # sender_id = event.get_sender_id()
@@ -575,7 +576,7 @@ class MessageListener:
 
         return False
 
-    def _parse_session_id_info(self, session_id: str) -> Dict[str, Any]:
+    def _parse_session_id_info(self, session_id: str) -> dict[str, Any]:
         """解析完整会话ID，提取平台、类型和ID信息
 
         Args:
@@ -602,12 +603,12 @@ class MessageListener:
         platform, message_type, id_part = parts
 
         # 判断是否为群聊
-        is_group = "group" in message_type.lower()        
-        
+        is_group = "group" in message_type.lower()
+
         return {
             "platform": platform,
-            "message_type": message_type,            "id": id_part,
+            "message_type": message_type,
+            "id": id_part,
             "is_group": is_group,
             "full_id": session_id
         }
-        
