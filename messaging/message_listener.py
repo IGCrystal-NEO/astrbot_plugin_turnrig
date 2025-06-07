@@ -48,9 +48,11 @@ class MessageListener:
                 # 检查是否为转发指令
                 if plain_text.startswith("/fn ") or plain_text == "/fn":
                     logger.debug(f"消息 {message_id} 是转发指令，跳过监听")
-                    return logger.info(
-                        f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}"
-                    )
+                    return
+
+            logger.info(
+                f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}"
+            )
             # 获取消息平台名称，判断是否为 aiocqhttp
             # platform_name = event.get_platform_name()
             self.message_count += 1  # 获取已启用的任务
