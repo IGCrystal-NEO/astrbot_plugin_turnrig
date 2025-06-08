@@ -6,22 +6,49 @@ from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 from astrbot.api.message_components import Plain
 
-# 更新导入路径
+# 更新导入路径喵～ 📦
 from .message_serializer import async_serialize_message
 
 
 class MessageListener:
-    """处理消息监听和缓存的类喵～"""
+    """
+    消息监听器喵～ 👂
+    专门负责监听和处理各种消息的可爱小助手！ ฅ(^•ω•^)ฅ
+
+    这个小监听器会帮你：
+    - 👂 监听所有消息事件
+    - 🔍 检测消息内容和特殊格式
+    - 💾 缓存符合条件的消息
+    - 📤 触发消息转发操作
+    - 🎯 智能过滤和匹配规则
+
+    Note:
+        所有的消息都会经过这里进行精心筛选喵！ ✨
+    """
 
     def __init__(self, plugin):
+        """
+        初始化消息监听器喵～ 🐾
+
+        Args:
+            plugin: 插件实例，提供配置和服务喵～
+        """
         self.plugin = plugin
-        # 调试计数器
+        # 调试计数器喵～ 🔢
         self.message_count = 0
+
     def _extract_onebot_fields(self, event: AstrMessageEvent) -> dict:
-        """从 aiocqhttp_platform_adapter 的原始事件中提取 OneBot V11 协议字段
+        """
+        从 aiocqhttp_platform_adapter 的原始事件中提取 OneBot V11 协议字段喵～ 🔍
+
+        Args:
+            event: 消息事件对象喵
 
         Returns:
-            dict: 包含 message_type, sub_type 等原始字段的字典
+            包含 message_type, sub_type 等原始字段的字典喵～
+
+        Note:
+            用于获取更准确的消息类型信息喵！ 📋
         """
         onebot_fields = {
             "message_type": None,
@@ -30,61 +57,73 @@ class MessageListener:
         }
 
         try:
-            logger.debug(f"开始提取 OneBot 字段，平台: {event.get_platform_name()}")
+            logger.debug(
+                f"开始提取 OneBot 字段，平台: {event.get_platform_name()} 喵～ 🔍"
+            )
 
-            # 检查 message_obj 是否有 raw_message 属性
+            # 检查 message_obj 是否有 raw_message 属性喵～ 📋
             if not hasattr(event.message_obj, "raw_message"):
-                logger.warning("event.message_obj 没有 raw_message 属性")
+                logger.warning("event.message_obj 没有 raw_message 属性喵 😿")
                 raise AttributeError("No raw_message attribute")
 
             raw_event = event.message_obj.raw_message
             if not raw_event:
-                logger.warning("raw_message 为空")
+                logger.warning("raw_message 为空喵 😿")
                 raise ValueError("raw_message is None")
 
-            logger.info(f"获取到原始事件对象: {type(raw_event)}")
+            logger.info(f"获取到原始事件对象喵: {type(raw_event)} 📦")
 
-            # 优先从 aiocqhttp_platform_adapter 传递的 raw_message 中获取原始 OneBot 字段
+            # 优先从 aiocqhttp_platform_adapter 传递的 raw_message 中获取原始 OneBot 字段喵～ 🎯
             if event.get_platform_name() == "aiocqhttp":
-                logger.debug("处理 aiocqhttp 平台的原始事件")
+                logger.debug("处理 aiocqhttp 平台的原始事件喵～ 🤖")
 
-                # 方法1: 直接从 OneBot Event 对象访问字段
+                # 方法1: 直接从 OneBot Event 对象访问字段喵～ 📋
                 if hasattr(raw_event, "message_type"):
-                    onebot_fields["message_type"] = getattr(raw_event, "message_type", None)
+                    onebot_fields["message_type"] = getattr(
+                        raw_event, "message_type", None
+                    )
                     onebot_fields["sub_type"] = getattr(raw_event, "sub_type", "normal")
-                    logger.info(f"✅ 从 OneBot Event 对象提取字段成功: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']}")
+                    logger.info(
+                        f"✅ 从 OneBot Event 对象提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 🎉"
+                    )
 
-                # 方法2: 如果是字典格式（某些适配器可能传递字典）
+                # 方法2: 如果是字典格式（某些适配器可能传递字典）喵～ 📚
                 elif isinstance(raw_event, dict):
                     onebot_fields["message_type"] = raw_event.get("message_type", None)
                     onebot_fields["sub_type"] = raw_event.get("sub_type", "normal")
-                    logger.info(f"✅ 从字典格式提取字段成功: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']}")
+                    logger.info(
+                        f"✅ 从字典格式提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 📖"
+                    )
 
-                # 方法3: 通过索引访问（OneBot Event 也支持字典式访问）
+                # 方法3: 通过索引访问（OneBot Event 也支持字典式访问）喵～ 🔑
                 elif hasattr(raw_event, "__getitem__"):
                     try:
                         onebot_fields["message_type"] = raw_event["message_type"]
                         onebot_fields["sub_type"] = raw_event.get("sub_type", "normal")
-                        logger.info(f"✅ 通过索引访问提取字段成功: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']}")
+                        logger.info(
+                            f"✅ 通过索引访问提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 🗝️"
+                        )
                     except (KeyError, TypeError) as e:
-                        logger.debug(f"通过索引访问失败: {e}，继续尝试其他方法")
+                        logger.debug(f"通过索引访问失败喵: {e}，继续尝试其他方法 🔄")
 
-                # 方法4: 详细检查原始事件的结构
+                # 方法4: 详细检查原始事件的结构喵～ 🔬
                 if onebot_fields["message_type"] is None:
-                    logger.warning("所有常规方法都未能提取到 OneBot 字段，进行详细分析")
-                    logger.debug(f"raw_event 可用属性: {dir(raw_event)}")
+                    logger.warning(
+                        "所有常规方法都未能提取到 OneBot 字段，进行详细分析喵 🔍"
+                    )
+                    logger.debug(f"raw_event 可用属性喵: {dir(raw_event)} 📋")
                     if hasattr(raw_event, "__dict__"):
-                        logger.debug(f"raw_event.__dict__: {raw_event.__dict__}")
+                        logger.debug(f"raw_event.__dict__ 喵: {raw_event.__dict__} 📝")
 
-                    # 尝试强制转换为字符串查看内容
+                    # 尝试强制转换为字符串查看内容喵～ 📄
                     raw_str = str(raw_event)
-                    logger.debug(f"raw_event 字符串表示: {raw_str[:200]}...")
+                    logger.debug(f"raw_event 字符串表示喵: {raw_str[:200]}... 📜")
 
-                    # 查找可能的 message_type 字段
+                    # 查找可能的 message_type 字段喵～ 🔍
                     if "message_type" in raw_str:
-                        logger.debug("在字符串表示中找到 message_type 字段")
+                        logger.debug("在字符串表示中找到 message_type 字段喵 ✨")
 
-            # 如果上游没有提供原始字段，则从 AstrBot 的 message_type 推断
+            # 如果上游没有提供原始字段，则从 AstrBot 的 message_type 推断喵～ 🤔
             if onebot_fields["message_type"] is None:
                 astr_message_type = event.get_message_type()
                 if astr_message_type.name == "GROUP_MESSAGE":
@@ -93,104 +132,116 @@ class MessageListener:
                     onebot_fields["message_type"] = "private"
                 else:
                     onebot_fields["message_type"] = "unknown"
-                logger.warning(f"⚠️ 从 AstrBot MessageType 推断: {onebot_fields['message_type']}")
+                logger.warning(
+                    f"⚠️ 从 AstrBot MessageType 推断喵: {onebot_fields['message_type']} 🎯"
+                )
 
-            # 确保 sub_type 有默认值
+            # 确保 sub_type 有默认值喵～ 📋
             if onebot_fields["sub_type"] is None:
                 onebot_fields["sub_type"] = "normal"
 
-            logger.info(f"🎯 最终提取的 OneBot 字段: {onebot_fields}")
+            logger.info(f"🎯 最终提取的 OneBot 字段喵: {onebot_fields} ✅")
 
         except Exception as e:
-            logger.error(f"❌ 提取 OneBot 字段时出错: {e}", exc_info=True)
-            # 发生错误时使用推断值
+            logger.error(f"❌ 提取 OneBot 字段时出错喵: {e} 😿", exc_info=True)
+            # 发生错误时使用推断值喵～ 🆘
             astr_message_type = event.get_message_type()
             if astr_message_type.name == "GROUP_MESSAGE":
                 onebot_fields["message_type"] = "group"
             elif astr_message_type.name == "FRIEND_MESSAGE":
                 onebot_fields["message_type"] = "private"
             onebot_fields["sub_type"] = "normal"
-            logger.warning(f"⚠️ 错误恢复: 使用推断值 {onebot_fields}")
+            logger.warning(f"⚠️ 错误恢复: 使用推断值喵 {onebot_fields} 🔧")
 
         return onebot_fields
+
     async def on_all_message(self, event: AstrMessageEvent):
-        """监听所有消息并进行处理喵～"""
+        """
+        监听所有消息并进行处理喵～ 👂
+        这是消息处理的核心方法，会对每条消息进行详细分析！
+
+        Args:
+            event: 消息事件对象喵
+
+        Note:
+            会自动过滤重复消息和插件指令喵～ 🔍
+        """
         try:
-            # 获取消息ID，避免重复处理
+            # 获取消息ID，避免重复处理喵～ 🆔
             message_id = event.message_obj.message_id
 
-            # 提取 OneBot V11 协议的原始字段
+            # 提取 OneBot V11 协议的原始字段喵～ 📋
             onebot_fields = self._extract_onebot_fields(event)
-            logger.info(f"🎯 提取到的 OneBot 字段: {onebot_fields}")
+            logger.info(f"🎯 提取到的 OneBot 字段喵: {onebot_fields} ✨")
 
-            # 初始化关键变量
+            # 初始化关键变量喵～ 🔢
             has_mface = False
             serialized_messages = []
 
-            # 检查消息是否已经处理过
+            # 检查消息是否已经处理过喵～ 🔍
             if self._is_message_processed(message_id):
-                logger.debug(f"消息 {message_id} 已经处理过，跳过")
+                logger.debug(f"消息 {message_id} 已经处理过，跳过喵～ ⏭️")
                 return
 
-            # 检查是否为插件指令，如果是则跳过监听
+            # 检查是否为插件指令，如果是则跳过监听喵～ ⚠️
             plain_text = event.message_str
             if plain_text:
-                # 检查是否为插件的指令前缀
+                # 检查是否为插件的指令前缀喵～ 🔍
                 if (
                     plain_text.startswith("/tr ")
                     or plain_text.startswith("/turnrig ")
                     or plain_text == "/tr"
                     or plain_text == "/turnrig"
                 ):
-                    logger.debug(f"消息 {message_id} 是插件指令，跳过监听")
+                    logger.debug(f"消息 {message_id} 是插件指令，跳过监听喵～ 🚫")
                     return
-                # 检查是否为转发指令
+                # 检查是否为转发指令喵～ 📤
                 if plain_text.startswith("/fn ") or plain_text == "/fn":
-                    logger.debug(f"消息 {message_id} 是转发指令，跳过监听")
+                    logger.debug(f"消息 {message_id} 是转发指令，跳过监听喵～ 🔄")
                     return
 
             logger.info(
-                f"MessageListener.on_all_message 被调用，处理消息: {event.message_str}"
+                f"MessageListener.on_all_message 被调用，处理消息喵: {event.message_str} 📨"
             )
 
-            # 获取消息平台名称，判断是否为 aiocqhttp
+            # 获取消息平台名称，判断是否为 aiocqhttp喵～ 🤖
             # platform_name = event.get_platform_name()
-            self.message_count += 1  # 获取已启用的任务
+            self.message_count += 1  # 获取已启用的任务喵～ ✅
             enabled_tasks = self.plugin.get_all_enabled_tasks()
-            logger.debug(f"获取到 {len(enabled_tasks)} 个已启用任务")
+            logger.debug(f"获取到 {len(enabled_tasks)} 个已启用任务喵～ 📊")
 
-            # 优先使用事件的message_str属性
+            # 优先使用事件的message_str属性喵～ 📝
             if not plain_text and hasattr(event.message_obj, "message_str"):
                 plain_text = event.message_obj.message_str
 
             logger.debug(
-                f'收到消息 [{event.get_sender_name()}]: "{plain_text}" (长度: {len(plain_text) if plain_text else 0})'
+                f'收到消息 [{event.get_sender_name()}]: "{plain_text}" (长度: {len(plain_text) if plain_text else 0}) 喵～ 📩'
             )
 
-            # 如果还是没有文本内容，尝试从raw_message中获取
+            # 如果还是没有文本内容，尝试从raw_message中获取喵～ 🔍
             if (
                 not plain_text
                 and hasattr(event.message_obj, "raw_message")
                 and event.message_obj.raw_message
             ):
-                # 尝试从raw_message中获取内容
+                # 尝试从raw_message中获取内容喵～ 📄
 
                 try:
                     logger.debug(
-                        f"从raw_message找到内容: {event.message_obj.raw_message}"
+                        f"从raw_message找到内容喵: {event.message_obj.raw_message} 📋"
                     )
                 except Exception:
                     pass
 
-            # 获取消息组件
+            # 获取消息组件喵～ 🧩
             messages = event.get_messages()
             if (
                 not messages
                 and hasattr(event.message_obj, "message")
                 and isinstance(event.message_obj.message, list)
             ):
-                logger.warning("框架未处理message列表，直接进行处理")
-                # 简单处理为文本消息
+                logger.warning("框架未处理message列表，直接进行处理喵 🔧")
+                # 简单处理为文本消息喵～ 📝
                 for msg_part in event.message_obj.message:
                     if (
                         msg_part.get("type") == "text"
@@ -199,10 +250,10 @@ class MessageListener:
                     ):
                         messages.append(Plain(text=msg_part["data"]["text"]))
                     elif msg_part.get("type") == "mface":
-                        # 检测到特殊表情
+                        # 检测到特殊表情喵～ 😸
                         has_mface = True
 
-            # 输出组件详情
+            # 输出组件详情喵～ 📋
             if messages:
                 components_info = []
                 for i, comp in enumerate(messages):
@@ -218,18 +269,18 @@ class MessageListener:
                         )
                     else:
                         components_info.append(f"[{i}] [{comp_type}] {text_content}")
-                logger.debug(f"消息组件: {' | '.join(components_info)}")
+                logger.debug(f"消息组件喵: {' | '.join(components_info)} 🧩")
 
-            # 强制检查消息原始数据 - 直接处理aicqhttp适配器转发的原始事件
+            # 强制检查消息原始数据 - 直接处理aicqhttp适配器转发的原始事件喵～ 🔍
             if hasattr(event.message_obj, "__dict__"):
                 raw_obj = event.message_obj.__dict__
-                # 直接检查是否有特殊表情相关结构
+                # 直接检查是否有特殊表情相关结构喵～ 😸
                 if "message" in raw_obj and isinstance(raw_obj["message"], list):
                     for msg in raw_obj["message"]:
                         if isinstance(msg, dict) and msg.get("type") == "mface":
                             has_mface = True
-                            logger.warning(f"直接从__dict__找到mface: {msg}")
-                            # 提取数据
+                            logger.warning(f"直接从__dict__找到mface喵: {msg} 😸")
+                            # 提取数据喵～ 📊
                             data = msg.get("data", {})
                             url = data.get("url", "")
                             summary = data.get("summary", "[表情]")
@@ -249,7 +300,7 @@ class MessageListener:
                             }
                             serialized_messages.append(mface_data)
 
-            # 开始激进检测模式，查找所有可能的mface内容
+            # 开始激进检测模式，查找所有可能的mface内容喵～ 🔍
             for attr_name in dir(event.message_obj):
                 if not attr_name.startswith("_"):
                     try:
@@ -257,56 +308,56 @@ class MessageListener:
                         if "mface" in str(attr_value).lower():
                             has_mface = True
                             logger.warning(
-                                f"从属性 {attr_name} 中发现mface内容: {attr_value}"
+                                f"从属性 {attr_name} 中发现mface内容喵: {attr_value} 😸"
                             )
                     except Exception:
                         pass
 
-            # 开始针对每个任务进行处理
+            # 开始针对每个任务进行处理喵～ 🎯
             task_matched = False
             for task in enabled_tasks:
                 task_id = task.get("id")
 
-                # 检查是否应该监听此消息
+                # 检查是否应该监听此消息喵～ 🔍
                 should_monitor = self._should_monitor_message(task, event)
                 should_monitor_user = self._should_monitor_user(task, event)
 
                 if should_monitor or should_monitor_user:
                     task_matched = True
-                    # 确保消息非空 - 优先使用各种方式确保获取到内容
+                    # 确保消息非空 - 优先使用各种方式确保获取到内容喵～ 📝
                     session_id = event.unified_msg_origin
 
-                    # 重置特殊表情标记，单独检测每个任务
+                    # 重置特殊表情标记，单独检测每个任务喵～ 🔄
                     task_has_mface = has_mface
 
-                    # 初始化缓存
+                    # 初始化缓存喵～ 💾
                     if task_id not in self.plugin.message_cache:
                         self.plugin.message_cache[task_id] = {}
                     if session_id not in self.plugin.message_cache[task_id]:
                         self.plugin.message_cache[task_id][session_id] = []
 
-                    # 获取消息详情
+                    # 获取消息详情喵～ 📊
                     timestamp = int(time.time())
                     mface_components = [
                         msg for msg in serialized_messages if msg.get("is_mface")
                     ]
 
                     logger.debug(
-                        f"详细消息对象: {event.message_obj.__dict__ if hasattr(event.message_obj, '__dict__') else 'No __dict__'}"
+                        f"详细消息对象喵: {event.message_obj.__dict__ if hasattr(event.message_obj, '__dict__') else 'No __dict__'} 📋"
                     )
 
-                    # 序列化消息 - 保存之前已探测到的特殊表情
+                    # 序列化消息 - 保存之前已探测到的特殊表情喵～ 📦
                     task_serialized_messages = await async_serialize_message(
-                        messages if messages else []
+                        messages if messages else [], event
                     )
 
-                    # 合并普通消息和特殊表情消息
+                    # 合并普通消息和特殊表情消息喵～ 🔗
                     for mface_msg in mface_components:
                         task_serialized_messages.append(mface_msg)
 
                     serialized_messages = task_serialized_messages
 
-                    # 方法1: 直接从message属性获取
+                    # 方法1: 直接从message属性获取喵～ 📋
                     if (
                         not task_has_mface
                         and hasattr(event.message_obj, "message")
@@ -315,8 +366,8 @@ class MessageListener:
                         for msg in event.message_obj.message:
                             if isinstance(msg, dict) and msg.get("type") == "mface":
                                 task_has_mface = True
-                                logger.warning(f"从message列表找到mface: {msg}")
-                                # 提取数据
+                                logger.warning(f"从message列表找到mface喵: {msg} 😸")
+                                # 提取数据喵～ 📊
                                 data = msg.get("data", {})
                                 url = data.get("url", "")
                                 summary = data.get("summary", "[表情]")
@@ -336,7 +387,7 @@ class MessageListener:
                                 }
                                 serialized_messages.append(mface_as_image)
 
-                    # 方法2: 检查raw_message对象结构
+                    # 方法2: 检查raw_message对象结构喵～ 🔍
                     if (
                         not task_has_mface
                         and hasattr(event.message_obj, "raw_message")
@@ -344,13 +395,13 @@ class MessageListener:
                     ):
                         try:
                             raw_message = event.message_obj.raw_message
-                            logger.warning(f"原始消息类型: {type(raw_message)}")
+                            logger.warning(f"原始消息类型喵: {type(raw_message)} 📦")
 
                             if hasattr(raw_message, "message") and isinstance(
                                 raw_message.message, list
                             ):
                                 msg_list = raw_message.message
-                            # 再尝试从raw_message字典中获取message列表
+                            # 再尝试从raw_message字典中获取message列表喵～ 📚
                             elif (
                                 isinstance(raw_message, dict)
                                 and "message" in raw_message
@@ -359,9 +410,9 @@ class MessageListener:
                             else:
                                 msg_list = []
 
-                            # 处理获取到的消息列表
+                            # 处理获取到的消息列表喵～ 📋
                             for raw_msg in msg_list:
-                                # 处理图片消息并提取filename
+                                # 处理图片消息并提取filename喵～ 🖼️
                                 if (
                                     isinstance(raw_msg, dict)
                                     and raw_msg.get("type") == "image"
@@ -370,29 +421,29 @@ class MessageListener:
                                     extracted_filename = raw_msg["data"].get("filename")
                                     if extracted_filename:
                                         logger.debug(
-                                            f"从原始消息提取到filename: {extracted_filename}"
+                                            f"从原始消息提取到filename喵: {extracted_filename} 📁"
                                         )
-                                        # 在序列化消息中找到对应的图片并添加filename
+                                        # 在序列化消息中找到对应的图片并添加filename喵～ 🔗
                                         for i, msg in enumerate(serialized_messages):
                                             if msg.get("type") == "image":
                                                 serialized_messages[i]["filename"] = (
                                                     extracted_filename
                                                 )
                                                 logger.debug(
-                                                    f"已将filename {extracted_filename} 添加到图片消息"
+                                                    f"已将filename {extracted_filename} 添加到图片消息喵～ ✅"
                                                 )
                                                 break
 
-                                # 处理特殊表情(mface)
+                                # 处理特殊表情(mface)喵～ 😸
                                 elif (
                                     isinstance(raw_msg, dict)
                                     and raw_msg.get("type") == "mface"
                                 ):
                                     task_has_mface = True
                                     logger.warning(
-                                        f"从raw_message列表找到mface: {raw_msg}"
+                                        f"从raw_message列表找到mface喵: {raw_msg} 😸"
                                     )
-                                    # 提取表情数据
+                                    # 提取表情数据喵～ 📊
                                     data = raw_msg.get("data", {})
                                     url = raw_msg.get("url", "") or data.get("url", "")
                                     summary = raw_msg.get("summary", "") or data.get(
