@@ -17,18 +17,115 @@ class MessageListener:
         self.plugin = plugin
         # 调试计数器
         self.message_count = 0
+    def _extract_onebot_fields(self, event: AstrMessageEvent) -> dict:
+        """从 aiocqhttp_platform_adapter 的原始事件中提取 OneBot V11 协议字段
 
+        Returns:
+            dict: 包含 message_type, sub_type 等原始字段的字典
+        """
+        onebot_fields = {
+            "message_type": None,
+            "sub_type": None,
+            "platform": event.get_platform_name(),
+        }
+
+        try:
+            logger.debug(f"开始提取 OneBot 字段，平台: {event.get_platform_name()}")
+
+            # 检查 message_obj 是否有 raw_message 属性
+            if not hasattr(event.message_obj, "raw_message"):
+                logger.warning("event.message_obj 没有 raw_message 属性")
+                raise AttributeError("No raw_message attribute")
+
+            raw_event = event.message_obj.raw_message
+            if not raw_event:
+                logger.warning("raw_message 为空")
+                raise ValueError("raw_message is None")
+
+            logger.info(f"获取到原始事件对象: {type(raw_event)}")
+
+            # 优先从 aiocqhttp_platform_adapter 传递的 raw_message 中获取原始 OneBot 字段
+            if event.get_platform_name() == "aiocqhttp":
+                logger.debug("处理 aiocqhttp 平台的原始事件")
+
+                # 方法1: 直接从 OneBot Event 对象访问字段
+                if hasattr(raw_event, "message_type"):
+                    onebot_fields["message_type"] = getattr(raw_event, "message_type", None)
+                    onebot_fields["sub_type"] = getattr(raw_event, "sub_type", "normal")
+                    logger.info(f"✅ 从 OneBot Event 对象提取字段成功: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']}")
+
+                # 方法2: 如果是字典格式（某些适配器可能传递字典）
+                elif isinstance(raw_event, dict):
+                    onebot_fields["message_type"] = raw_event.get("message_type", None)
+                    onebot_fields["sub_type"] = raw_event.get("sub_type", "normal")
+                    logger.info(f"✅ 从字典格式提取字段成功: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']}")
+
+                # 方法3: 通过索引访问（OneBot Event 也支持字典式访问）
+                elif hasattr(raw_event, "__getitem__"):
+                    try:
+                        onebot_fields["message_type"] = raw_event["message_type"]
+                        onebot_fields["sub_type"] = raw_event.get("sub_type", "normal")
+                        logger.info(f"✅ 通过索引访问提取字段成功: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']}")
+                    except (KeyError, TypeError) as e:
+                        logger.debug(f"通过索引访问失败: {e}，继续尝试其他方法")
+
+                # 方法4: 详细检查原始事件的结构
+                if onebot_fields["message_type"] is None:
+                    logger.warning("所有常规方法都未能提取到 OneBot 字段，进行详细分析")
+                    logger.debug(f"raw_event 可用属性: {dir(raw_event)}")
+                    if hasattr(raw_event, "__dict__"):
+                        logger.debug(f"raw_event.__dict__: {raw_event.__dict__}")
+
+                    # 尝试强制转换为字符串查看内容
+                    raw_str = str(raw_event)
+                    logger.debug(f"raw_event 字符串表示: {raw_str[:200]}...")
+
+                    # 查找可能的 message_type 字段
+                    if "message_type" in raw_str:
+                        logger.debug("在字符串表示中找到 message_type 字段")
+
+            # 如果上游没有提供原始字段，则从 AstrBot 的 message_type 推断
+            if onebot_fields["message_type"] is None:
+                astr_message_type = event.get_message_type()
+                if astr_message_type.name == "GROUP_MESSAGE":
+                    onebot_fields["message_type"] = "group"
+                elif astr_message_type.name == "FRIEND_MESSAGE":
+                    onebot_fields["message_type"] = "private"
+                else:
+                    onebot_fields["message_type"] = "unknown"
+                logger.warning(f"⚠️ 从 AstrBot MessageType 推断: {onebot_fields['message_type']}")
+
+            # 确保 sub_type 有默认值
+            if onebot_fields["sub_type"] is None:
+                onebot_fields["sub_type"] = "normal"
+
+            logger.info(f"🎯 最终提取的 OneBot 字段: {onebot_fields}")
+
+        except Exception as e:
+            logger.error(f"❌ 提取 OneBot 字段时出错: {e}", exc_info=True)
+            # 发生错误时使用推断值
+            astr_message_type = event.get_message_type()
+            if astr_message_type.name == "GROUP_MESSAGE":
+                onebot_fields["message_type"] = "group"
+            elif astr_message_type.name == "FRIEND_MESSAGE":
+                onebot_fields["message_type"] = "private"
+            onebot_fields["sub_type"] = "normal"
+            logger.warning(f"⚠️ 错误恢复: 使用推断值 {onebot_fields}")
+
+        return onebot_fields
     async def on_all_message(self, event: AstrMessageEvent):
         """监听所有消息并进行处理喵～"""
         try:
             # 获取消息ID，避免重复处理
             message_id = event.message_obj.message_id
 
+            # 提取 OneBot V11 协议的原始字段
+            onebot_fields = self._extract_onebot_fields(event)
+            logger.info(f"🎯 提取到的 OneBot 字段: {onebot_fields}")
 
             # 初始化关键变量
             has_mface = False
             serialized_messages = []
-
 
             # 检查消息是否已经处理过
             if self._is_message_processed(message_id):
@@ -448,6 +545,7 @@ class MessageListener:
                         "sender_id": event.get_sender_id(),  # 添加发送者ID
                         "messages": serialized_messages,
                         "message_outline": message_outline,
+                        "onebot_fields": onebot_fields,  # 添加 OneBot 原始字段
                     }
 
                     self.plugin.message_cache[task_id][session_id].append(
