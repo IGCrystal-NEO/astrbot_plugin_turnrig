@@ -3,88 +3,132 @@ import time
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent
 
-# 更新导入路径
+# 更新导入路径喵～ 📦
 from ..utils.session_formatter import normalize_session_id
 
 
 class CommandHandlers:
-    """命令处理逻辑的实现类，但不直接处理指令注册"""
+    """
+    命令处理器喵～ 🎯
+    专门负责处理各种TurnRig插件命令的可爱小助手！ ฅ(^•ω•^ฅ
+
+    这个处理器会帮你：
+    - 🔧 解析和验证命令参数
+    - ✅ 检查管理员权限
+    - 📋 管理任务的增删改查
+    - 👂 处理监听和转发配置
+    - 🧹 清理过期数据
+
+    Note:
+        所有的命令都会经过精心处理，确保安全执行喵！ 💫
+    """
 
     def __init__(self, plugin_instance):
         """
-        初始化命令处理器
+        初始化命令处理器喵～ 🎮
+        负责处理各种插件命令的智能助手！
 
         Args:
-            plugin_instance: TurnRigPlugin的实例，用于访问其方法和属性
+            plugin_instance: TurnRigPlugin的实例，提供配置和服务喵～
         """
         self.plugin = plugin_instance
 
-        # 迁移旧格式的processed_message_ids到新格式
+        # 迁移旧格式的processed_message_ids到新格式喵～ 🔄
         self._migrate_processed_message_ids()
 
-        # 启动定期清理过期消息ID的任务
-        self.plugin.start_cleanup_task()
-
     def _migrate_processed_message_ids(self):
-        """将旧格式的全局processed_message_ids迁移到按任务ID分组的新格式"""
+        """
+        将旧格式的processed_message_ids迁移到新格式喵～ 🔄
+        把全局的消息ID记录按任务分组存储！
+
+        Note:
+            这样可以更好地管理不同任务的消息处理记录喵～ ✨
+        """
         if "processed_message_ids" in self.plugin.config and isinstance(
             self.plugin.config["processed_message_ids"], list
         ):
-            logger.info("检测到旧格式的processed_message_ids，正在迁移到新格式...")
+            logger.info("检测到旧格式的processed_message_ids，正在迁移到新格式喵～ 🔄")
 
-            # 获取所有任务ID
+            # 获取所有任务ID喵～ 📋
             task_ids = [str(task.get("id", "")) for task in self.plugin.config["tasks"]]
 
             if task_ids:
-                # 如果有任务，将所有消息ID分配给第一个任务（简单处理）
+                # 如果有任务，将所有消息ID分配给第一个任务（简单处理）喵～ 📤
                 first_task_id = task_ids[0]
                 self.plugin.config[f"processed_message_ids_{first_task_id}"] = [
                     {"id": msg_id, "timestamp": int(time.time())}
                     for msg_id in self.plugin.config["processed_message_ids"]
                 ]
                 logger.info(
-                    f"已将 {len(self.plugin.config['processed_message_ids'])} 个消息ID迁移到任务 {first_task_id}"
+                    f"已将 {len(self.plugin.config['processed_message_ids'])} 个消息ID迁移到任务 {first_task_id} 喵～ ✅"
                 )
 
-            # 删除旧的全局processed_message_ids
+            # 删除旧的全局processed_message_ids喵～ 🗑️
             del self.plugin.config["processed_message_ids"]
             self.plugin.save_config_file()
-            logger.info("迁移完成")
+            logger.info("迁移完成喵～ 🎉")
 
     def _ensure_full_session_id(self, session_id):
-        """确保会话ID是完整格式喵～"""
+        """
+        确保会话ID是完整格式喵～ 🔍
+        把简短的会话ID转换为标准格式！
+
+        Args:
+            session_id: 原始会话ID喵
+
+        Returns:
+            标准化后的完整会话ID喵～
+
+        Note:
+            会检测并修复各种不规范的ID格式喵！ 🔧
+        """
         if not session_id:
             return session_id
 
-        # 确保session_id是字符串类型
+        # 确保session_id是字符串类型喵～ 📝
         session_id = str(session_id)
 
-        # 处理单独的"群聊"或"私聊"关键词
-        if session_id == "群聊" or session_id == "私聊":  # 修复语法错误
+        # 处理单独的"群聊"或"私聊"关键词喵～ ⚠️
+        if session_id == "群聊" or session_id == "私聊":
             logger.warning(
-                f"检测到单独的'{session_id}'关键词，需要提供完整的会话ID格式：{session_id} <ID>"
+                f"检测到单独的'{session_id}'关键词，需要提供完整的会话ID格式喵：{session_id} <ID> 😿"
             )
             return session_id
 
-        # 检查session_id是否含有无效空格
+        # 检查session_id是否含有无效空格喵～ 🧹
         session_id = session_id.strip()
 
-        # 正常处理流程
+        # 正常处理流程喵～ ⚙️
         normalized_id = normalize_session_id(session_id)
 
-        # 检查是否包含两个冒号，表示是完整会话ID
+        # 检查是否包含两个冒号，表示是完整会话ID喵～ 🔍
         if normalized_id.count(":") == 2:
             return normalized_id
         else:
             logger.warning(
-                f"会话ID '{session_id}' 不是有效的完整会话ID格式，已转换为 '{normalized_id}' 但可能仍然无效"
+                f"会话ID '{session_id}' 不是有效的完整会话ID格式，已转换为 '{normalized_id}' 但可能仍然无效喵～ ⚠️"
             )
             return normalized_id
 
     async def _check_admin(
-        self, event: AstrMessageEvent, error_msg: str = "只有管理员才能执行此操作喵～"
+        self,
+        event: AstrMessageEvent,
+        error_msg: str = "只有管理员才能执行此操作喵～ 🚫",
     ):
-        """检查用户是否为管理员，返回(是否是管理员, 响应消息)"""
+        """
+        检查用户是否为管理员喵～ 👮
+        验证命令执行权限的安全守卫！
+
+        Args:
+            event: 消息事件对象喵
+            error_msg: 权限不足时的错误提示喵
+
+        Returns:
+            tuple: (是否是管理员, 响应消息) 喵～
+
+        Note:
+            所有重要操作都需要管理员权限喵！ 🔒
+        """
         if not event.is_admin():
             return False, event.plain_result(error_msg)
         return True, None
@@ -92,16 +136,30 @@ class CommandHandlers:
     def _get_validated_task(
         self, event: AstrMessageEvent, task_id: str, need_reply: bool = True
     ):
-        """获取并验证任务是否存在"""
+        """
+        获取并验证任务是否存在喵～ 📋
+        安全地获取任务配置！
+
+        Args:
+            event: 消息事件对象喵
+            task_id: 任务ID喵
+            need_reply: 是否需要错误回复喵
+
+        Returns:
+            tuple: (任务对象, 错误消息) 喵～
+
+        Note:
+            如果任务不存在会给出友好提示喵！ ❓
+        """
         if not task_id:
             if need_reply:
-                return None, "请提供任务ID喵～"
+                return None, "请提供任务ID喵～ 🆔"
             return None, None
 
         task = self.plugin.get_task_by_id(task_id)
         if not task:
             if need_reply:
-                return None, f"未找到ID为 {task_id} 的任务喵～"
+                return None, f"未找到ID为 {task_id} 的任务喵～ ❌"
             return None, None
 
         return task, None
@@ -109,20 +167,26 @@ class CommandHandlers:
     def _parse_session_id_from_command(
         self, event, cmd_text, chat_type, chat_id, task_id=None, command_name=""
     ):
-        """从命令参数中提取和标准化会话ID
+        """
+        从命令参数中提取和标准化会话ID喵～ 🔍
+        智能解析各种格式的会话ID参数！
 
         Args:
-            event: 消息事件对象
-            cmd_text: 原始命令文本
-            chat_type: 聊天类型参数
-            chat_id: 聊天ID参数
-            task_id: 任务ID，用于错误消息
-            command_name: 命令名称，用于错误消息格式化
+            event: 消息事件对象喵
+            cmd_text: 原始命令文本喵
+            chat_type: 聊天类型参数喵
+            chat_id: 聊天ID参数喵
+            task_id: 任务ID，用于错误消息喵
+            command_name: 命令名称，用于错误消息格式化喵
 
         Returns:
-            tuple: (full_session_id, error_response) - 成功时error_response为None，失败时full_session_id为None
+            tuple: (完整会话ID, 错误回复) 喵～
+            成功时错误回复为None，失败时完整会话ID为None喵
+
+        Note:
+            支持多种ID格式的智能识别和转换喵！ ✨
         """
-        # 确保类型转换
+        # 确保类型转换喵～ 🔄
         if chat_type is not None:
             chat_type = str(chat_type)
         if chat_id is not None:
@@ -130,74 +194,86 @@ class CommandHandlers:
 
         full_session_id = None
 
-        # 检查是否直接传入了完整会话ID (带冒号的格式)
+        # 检查是否直接传入了完整会话ID (带冒号的格式)喵～ 🎯
         if chat_type and ":" in chat_type:
-            # 直接使用chat_type作为会话ID
+            # 直接使用chat_type作为会话ID喵～ 📋
             full_session_id = self._ensure_full_session_id(chat_type)
-            logger.info(f"检测到完整会话ID: {full_session_id}")
-        # 检查是否为纯数字ID
+            logger.info(f"检测到完整会话ID喵: {full_session_id} ✨")
+        # 检查是否为纯数字ID喵～ 🔢
         elif chat_type and chat_type.isdigit() and not chat_id:
-            # 发现纯数字ID，要求用户明确指定群聊或私聊
-            error_msg = f"请明确指定会话类型喵～\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
+            # 发现纯数字ID，要求用户明确指定群聊或私聊喵～ ⚠️
+            error_msg = f"请明确指定会话类型喵～ 🤔\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
             if task_id:
                 error_msg += (
                     f"\n例如：/turnrig {command_name} {task_id} 群聊 {chat_type}"
                 )
             return None, event.plain_result(error_msg)
         else:
-            # 分析原始命令文本
+            # 分析原始命令文本喵～ 📄
             parts = cmd_text.split()
-            # 查找 "群聊" 或 "私聊" 关键字
+            # 查找 "群聊" 或 "私聊" 关键字喵～ 🔍
             for i, part in enumerate(parts):
                 if part in ["群聊", "私聊"] and i + 1 < len(parts):
-                    # 构造会话ID组合
+                    # 构造会话ID组合喵～ 🔗
                     session_id_text = f"{part} {parts[i + 1]}"
                     full_session_id = self._ensure_full_session_id(session_id_text)
                     logger.info(
-                        f"从命令文本提取会话ID: {session_id_text} -> {full_session_id}"
+                        f"从命令文本提取会话ID喵: {session_id_text} -> {full_session_id} ✅"
                     )
                     break
 
-            # 如果上面的方法失败，尝试常规处理流程
+            # 如果上面的方法失败，尝试常规处理流程喵～ 🔄
             if not full_session_id:
-                # 检查基本参数
+                # 检查基本参数喵～ 📋
                 if not chat_type or chat_type not in ["群聊", "私聊"]:
                     return None, event.plain_result(
-                        f"请明确指定会话类型喵～\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
+                        f"请明确指定会话类型喵～ 🤔\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
                     )
 
                 if not chat_id:
                     return None, event.plain_result(
-                        f"请提供{chat_type}ID喵～\n正确格式：/turnrig {command_name} <任务ID> {chat_type} <会话ID>"
+                        f"请提供{chat_type}ID喵～ 🆔\n正确格式：/turnrig {command_name} <任务ID> {chat_type} <会话ID>"
                     )
 
-                # 使用参数构造会话ID
+                # 使用参数构造会话ID喵～ 🏗️
                 session_id_text = f"{chat_type} {chat_id}"
                 full_session_id = self._ensure_full_session_id(session_id_text)
-                logger.info(f"从参数构造会话ID: {session_id_text} -> {full_session_id}")
+                logger.info(
+                    f"从参数构造会话ID喵: {session_id_text} -> {full_session_id} ✅"
+                )
 
         if not full_session_id:
             return None, event.plain_result(
-                f"无法识别会话ID格式喵～\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
+                f"无法识别会话ID格式喵～ 😿\n正确格式：/turnrig {command_name} <任务ID> 群聊/私聊 <会话ID>"
             )
 
         return full_session_id, None
 
     async def _validate_command_params(
-        self, event, task_id, error_msg="只有管理员才能执行此操作喵～", command_name=""
+        self,
+        event,
+        task_id,
+        error_msg="只有管理员才能执行此操作喵～ 🚫",
+        command_name="",
     ):
-        """验证通用命令参数，包括管理员权限和任务ID
+        """
+        验证通用命令参数喵～ 🔍
+        包括管理员权限和任务ID的安全检查！
 
         Args:
-            event: 消息事件对象
-            task_id: 任务ID参数
-            error_msg: 权限错误提示
-            command_name: 命令名称，用于错误消息格式化
+            event: 消息事件对象喵
+            task_id: 任务ID参数喵
+            error_msg: 权限错误提示喵
+            command_name: 命令名称，用于错误消息格式化喵
 
         Returns:
-            tuple: (task, cmd_text, error_response) - 成功时error_response为None
+            tuple: (任务对象, 命令文本, 错误回复) 喵～
+            成功时错误回复为None喵
+
+        Note:
+            所有重要命令都会经过这里的安全验证喵！ 🛡️
         """
-        # 权限检查
+        # 权限检查喵～ 👮
         is_admin, response = await self._check_admin(event, error_msg)
         if not is_admin:
             return None, None, response
@@ -221,29 +297,34 @@ class CommandHandlers:
     def _update_session_list(
         self, task, session_id, list_name, action="add", session_type="会话"
     ):
-        """更新任务的会话列表（添加或删除）
+        """
+        更新任务的会话列表喵～ 📝
+        智能添加或删除监听和目标会话！
 
         Args:
-            task: 任务对象
-            session_id: 完整会话ID（如 aiocqhttp:GroupMessage:123456）
-            list_name: 列表名称，如'monitor_groups', 'target_sessions'等
-            action: 操作类型，"add" 或 "remove"
-            session_type: 会话类型描述，用于响应消息
+            task: 任务对象喵
+            session_id: 完整会话ID（如 aiocqhttp:GroupMessage:123456）喵
+            list_name: 列表名称，如'monitor_groups', 'target_sessions'等喵
+            action: 操作类型，"add" 或 "remove"喵
+            session_type: 会话类型描述，用于响应消息喵
 
         Returns:
-            str: 操作结果消息
+            str: 操作结果消息喵～
+
+        Note:
+            会自动识别群聊和私聊，存储到正确的列表中喵！ ✨
         """
         task_name = task.get("name", "未命名")
 
-        # 解析完整会话ID以确定应该存储到哪个列表
+        # 解析完整会话ID以确定应该存储到哪个列表喵～ 🔍
         parsed_info = self._parse_session_id_info(session_id)
         if not parsed_info:
-            return f"无法解析会话ID格式: {session_id}，请使用完整的会话ID格式喵～"
+            return f"无法解析会话ID格式喵: {session_id}，请使用完整的会话ID格式 😿"
 
         actual_list_name = list_name
         actual_id = parsed_info["id"]
 
-        # 根据会话类型决定实际的列表名称和存储的ID
+        # 根据会话类型决定实际的列表名称和存储的ID喵～ 🎯
         if list_name in ["monitor_sessions", "monitor_groups", "monitor_private_users"]:
             if parsed_info["is_group"]:
                 actual_list_name = "monitor_groups"
@@ -252,50 +333,52 @@ class CommandHandlers:
                 actual_list_name = "monitor_private_users"
                 session_type = "私聊用户"
 
-            # 对于监听列表，我们存储纯ID而不是完整会话ID
+            # 对于监听列表，我们存储纯ID而不是完整会话ID喵～ 💾
             storage_id = actual_id
             logger.info(
-                f"监听会话: {session_id} -> 存储到 {actual_list_name}: {storage_id}"
+                f"监听会话喵: {session_id} -> 存储到 {actual_list_name}: {storage_id} ✅"
             )
         else:
-            # 对于其他列表（如target_sessions），存储完整会话ID
+            # 对于其他列表（如target_sessions），存储完整会话ID喵～ 🎯
             storage_id = session_id
             logger.info(
-                f"目标会话: {session_id} -> 存储到 {actual_list_name}: {storage_id}"
+                f"目标会话喵: {session_id} -> 存储到 {actual_list_name}: {storage_id} ✅"
             )
 
-        # 确保列表存在
+        # 确保列表存在喵～ 📋
         if actual_list_name not in task:
             task[actual_list_name] = []
 
-        # 添加操作
+        # 添加操作喵～ ➕
         if action == "add":
             if storage_id not in task[actual_list_name]:
                 task[actual_list_name].append(storage_id)
                 self.plugin.save_config_file()
-                return f"已将{session_type} {actual_id} 添加到任务 [{task_name}] 的 {actual_list_name} 列表中喵～"
+                return f"已将{session_type} {actual_id} 添加到任务 [{task_name}] 的 {actual_list_name} 列表中喵～ ✅"
             else:
-                return f"{session_type} {actual_id} 已经在任务 [{task_name}] 的 {actual_list_name} 列表中了喵～"
+                return f"{session_type} {actual_id} 已经在任务 [{task_name}] 的 {actual_list_name} 列表中了喵～ ⚠️"
 
-        # 删除操作
+        # 删除操作喵～ ➖
         elif action == "remove":
             if storage_id in task[actual_list_name]:
                 task[actual_list_name].remove(storage_id)
                 self.plugin.save_config_file()
-                return f"已将{session_type} {actual_id} 从任务 [{task_name}] 的 {actual_list_name} 列表中移除喵～"
+                return f"已将{session_type} {actual_id} 从任务 [{task_name}] 的 {actual_list_name} 列表中移除喵～ ✅"
             else:
-                return f"{session_type} {actual_id} 不在任务 [{task_name}] 的 {actual_list_name} 列表中喵～"
+                return f"{session_type} {actual_id} 不在任务 [{task_name}] 的 {actual_list_name} 列表中喵～ ❓"
 
-        return f"未知操作: {action}"
+        return f"未知操作喵: {action} 😿"
 
     def _parse_session_id_info(self, session_id):
-        """解析完整会话ID，提取平台、类型和ID信息
+        """
+        解析完整会话ID喵～ 🔍
+        提取平台、类型和ID等详细信息！
 
         Args:
-            session_id: 完整会话ID，如 'aiocqhttp:GroupMessage:123456'
+            session_id: 完整会话ID，如 'aiocqhttp:GroupMessage:123456'喵
 
         Returns:
-            dict: 包含解析结果的字典，格式如下：
+            dict: 包含解析结果的字典喵～
                 {
                     'platform': 'aiocqhttp',
                     'message_type': 'GroupMessage',
@@ -303,22 +386,25 @@ class CommandHandlers:
                     'is_group': True/False,
                     'full_id': 'aiocqhttp:GroupMessage:123456'
                 }
-                如果解析失败则返回None
+                如果解析失败则返回None喵
+
+        Note:
+            支持标准的三段式会话ID格式喵！ 📋
         """
         if not session_id or not isinstance(session_id, str):
             return None
 
-        # 检查是否为完整会话ID格式（platform:type:id）
+        # 检查是否为完整会话ID格式（platform:type:id）喵～ 🔍
         parts = session_id.split(":")
         if len(parts) != 3:
             logger.warning(
-                f"会话ID格式不正确: {session_id}，期望格式: platform:type:id"
+                f"会话ID格式不正确喵: {session_id}，期望格式: platform:type:id 😿"
             )
             return None
 
         platform, message_type, id_part = parts
 
-        # 判断是否为群聊
+        # 判断是否为群聊喵～ 👥
         is_group = "group" in message_type.lower()
 
         return {
@@ -379,27 +465,39 @@ class CommandHandlers:
 
     # turnrig 命令组处理方法
     async def handle_list_tasks(self, event: AstrMessageEvent):
-        """列出所有转发任务喵～"""
+        """
+        列出所有转发任务喵～ 📋
+        显示当前配置的所有任务信息！
+
+        Args:
+            event: 消息事件对象喵
+
+        Returns:
+            包含任务列表的回复消息喵～
+
+        Note:
+            会显示任务状态、监听数量、目标数量等详细信息喵！ ✨
+        """
         tasks = self.plugin.config.get("tasks", [])
 
         if not tasks:
-            return event.plain_result("当前没有配置任何转发任务喵～")
+            return event.plain_result("当前没有配置任何转发任务喵～ 😿")
 
-        result = "当前配置的转发任务列表喵～：\n"
+        result = "当前配置的转发任务列表喵～ 📋：\n"
         for i, task in enumerate(tasks):
-            status = "启用" if task.get("enabled", True) else "禁用"
+            status = "✅启用" if task.get("enabled", True) else "❌禁用"
             result += f"{i + 1}. [{status}] {task.get('name', '未命名')} (ID: {task.get('id')})\n"
-            result += f"  监听: {len(task.get('monitor_groups', []))} 个群, {len(task.get('monitor_private_users', []))} 个私聊用户\n"
+            result += f"  👂监听: {len(task.get('monitor_groups', []))} 个群, {len(task.get('monitor_private_users', []))} 个私聊用户\n"
 
-            # 显示群内监听的用户数
+            # 显示群内监听的用户数喵～ 👥
             total_group_users = sum(
                 len(users)
                 for users in task.get("monitored_users_in_groups", {}).values()
             )
-            result += f"  监听群内用户: {total_group_users} 个\n"
+            result += f"  👤监听群内用户: {total_group_users} 个\n"
 
-            result += f"  目标: {', '.join(task.get('target_sessions', ['无']))}\n"
-            result += f"  消息阈值: {task.get('max_messages', self.plugin.config.get('default_max_messages', 20))}\n"
+            result += f"  🎯目标: {', '.join(task.get('target_sessions', ['无']))}\n"
+            result += f"  📊消息阈值: {task.get('max_messages', self.plugin.config.get('default_max_messages', 20))}\n"
 
         return event.plain_result(result)
 
@@ -880,42 +978,68 @@ class CommandHandlers:
         return event.plain_result(help_text)
 
     async def handle_cleanup_ids(self, event: AstrMessageEvent, days: int = 7):
-        """清理过期的消息ID喵～"""
-        # 权限检查
+        """
+        清理过期的消息ID喵～ 🧹
+        删除指定天数前的已处理消息记录！
+
+        Args:
+            event: 消息事件对象喵
+            days: 清理天数，默认7天喵
+
+        Returns:
+            清理结果消息喵～
+
+        Note:
+            只有管理员可以执行此操作，帮助释放内存空间喵！ ✨
+        """
+        # 权限检查喵～ 👮
         is_admin, response = await self._check_admin(
-            event, "只有管理员才能清理消息ID喵～"
+            event, "只有管理员才能清理消息ID喵～ 🚫"
         )
         if not is_admin:
             return response
 
         if days <= 0:
-            return event.plain_result("天数必须大于0喵～")
+            return event.plain_result("天数必须大于0喵～ ❌")
 
         cleaned_count = self.plugin.cleanup_expired_message_ids(days)
         return event.plain_result(
-            f"已清理 {cleaned_count} 个超过 {days} 天的消息ID喵～"
+            f"已清理 {cleaned_count} 个超过 {days} 天的消息ID喵～ ✅"
         )
 
-    # tr 简化命令组处理方法
+    # tr 简化命令组处理方法喵～ 🎯
     async def handle_tr_add_monitor(self, event: AstrMessageEvent, task_id: str = None):
-        """将当前会话添加到监听列表喵～"""
-        # 权限检查
+        """
+        将当前会话添加到监听列表喵～ 👂
+        简化版监听添加命令，自动获取当前会话ID！
+
+        Args:
+            event: 消息事件对象喵
+            task_id: 要添加到的任务ID喵
+
+        Returns:
+            操作结果消息喵～
+
+        Note:
+            无需手动输入会话ID，会自动使用当前对话喵！ ✨
+        """
+        # 权限检查喵～ 👮
         is_admin, response = await self._check_admin(
-            event, "只有管理员才能添加监听源喵～"
+            event, "只有管理员才能添加监听源喵～ 🚫"
         )
         if not is_admin:
             return response
 
         if not task_id:
-            return event.plain_result("请指定要添加到的任务ID喵～")
+            return event.plain_result("请指定要添加到的任务ID喵～ 🆔")
 
         task = self.plugin.get_task_by_id(task_id)
         if not task:
-            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～")
-        # 自动获取当前会话ID
+            return event.plain_result(f"未找到ID为 {task_id} 的任务喵～ ❌")
+        # 自动获取当前会话ID喵～ 📍
         current_session = event.unified_msg_origin
 
-        # 根据会话类型更新监听列表（新的逻辑会自动判断群聊还是私聊）
+        # 根据会话类型更新监听列表（新的逻辑会自动判断群聊还是私聊）喵～ 🔄
         result = self._update_session_list(
             task, current_session, "monitor_sessions", "add", "当前会话"
         )
@@ -1007,7 +1131,19 @@ class CommandHandlers:
         return await self.handle_list_tasks(event)
 
     async def handle_tr_help(self, event: AstrMessageEvent):
-        """显示简化指令帮助喵～"""
+        """
+        显示简化指令帮助喵～ 📖
+        提供便捷的tr系列命令使用指南！
+
+        Args:
+            event: 消息事件对象喵
+
+        Returns:
+            详细的简化指令帮助信息喵～
+
+        Note:
+            tr系列命令无需手动输入会话ID，更加便捷喵！ ✨
+        """
         # 使用三引号字符串确保换行符被正确保留
         help_text = """▽ 转发侦听简化指令帮助 ▽
 
@@ -1042,7 +1178,22 @@ class CommandHandlers:
         group_id: str = None,
         user_id: str = None,
     ):
-        """添加群聊内特定用户到监听列表喵～"""
+        """
+        添加群聊内特定用户到监听列表喵～ 👥
+        精确监听指定群内的特定用户消息！
+
+        Args:
+            event: 消息事件对象喵
+            task_id: 任务ID喵
+            group_id: 群号喵
+            user_id: 用户QQ号喵
+
+        Returns:
+            操作结果消息喵～
+
+        Note:
+            可以只监听群内指定用户的消息，实现精准监听喵！ 🎯
+        """
         # 权限检查
         is_admin, response = await self._check_admin(
             event, "只有管理员才能添加群内特定用户监听喵～"

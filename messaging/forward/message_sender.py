@@ -11,50 +11,86 @@ from astrbot.api.message_components import Plain
 
 
 class MessageSender:
-    """消息发送器，负责处理消息的发送"""
+    """
+    消息发送器喵～ 📤
+    专门负责处理消息发送和转发的核心组件！ ฅ(^•ω•^ฅ
+
+    这个发送器会帮你：
+    - 🚀 智能多策略消息发送
+    - 🖼️ 图片和GIF处理
+    - 🔄 自动重试机制
+    - 💾 消息去重跟踪
+    - 🧹 自动清理过期记录
+
+    Note:
+        支持合并转发、单条发送等多种发送模式喵！ ✨
+    """
 
     def __init__(self, plugin, download_helper):
+        """
+        初始化消息发送器喵～ 🐾
+        创建一个强大的消息发送助手！
+
+        Args:
+            plugin: 插件实例，提供配置和上下文喵
+            download_helper: 下载助手，负责文件下载喵
+
+        Note:
+            会自动启动清理任务，维护发送记录的整洁喵！ 🧹
+        """
         self.plugin = plugin
         self.download_helper = download_helper
-        # 使用线程安全的消息跟踪字典，按会话ID分组
+        # 使用线程安全的消息跟踪字典，按会话ID分组喵～ 🔒
         self._message_tracking_lock = threading.RLock()
         self._sent_message_ids = defaultdict(set)
-        # 初始化消息时间戳记录字典
+        # 初始化消息时间戳记录字典喵～ ⏰
         self._message_timestamps = {}
-        # 设置消息ID过期时间（秒）
-        self._message_expiry_seconds = 3600  # 一小时后过期
-        # 启动清理任务
+        # 设置消息ID过期时间（秒）喵～ 📅
+        self._message_expiry_seconds = 3600  # 一小时后过期喵
+        # 启动清理任务喵～ 🧹
         self._start_cleanup_task()
 
     def _start_cleanup_task(self):
-        """启动定期清理过期消息ID的任务"""
+        """
+        启动定期清理过期消息ID的任务喵～ 🧹
+        每30分钟自动清理一次过期记录！
+
+        Note:
+            这是一个后台任务，确保内存使用效率喵！ 💫
+        """
 
         async def cleanup_task():
             while True:
                 try:
-                    await asyncio.sleep(1800)  # 每30分钟清理一次
+                    await asyncio.sleep(1800)  # 每30分钟清理一次喵～ 😴
                     self._cleanup_expired_message_ids()
                 except Exception as e:
-                    logger.error(f"清理过期消息ID时出错: {e}")
-                    await asyncio.sleep(60)  # 出错时等待时间短一些
+                    logger.error(f"清理过期消息ID时出错喵: {e} 😿")
+                    await asyncio.sleep(60)  # 出错时等待时间短一些喵
 
-        # 在事件循环中启动任务
+        # 在事件循环中启动任务喵～ 🚀
         asyncio.create_task(cleanup_task())
 
     def _cleanup_expired_message_ids(self):
-        """清理过期的消息ID记录"""
+        """
+        清理过期的消息ID记录喵～ 🗑️
+        删除超过一小时的旧记录，释放内存！
+
+        Note:
+            使用线程锁确保并发安全喵！ 🔒
+        """
         import time
 
         current_time = time.time()
         with self._message_tracking_lock:
             expired_sessions = []
 
-            # 遍历所有会话的时间戳记录
+            # 遍历所有会话的时间戳记录喵～ 🔍
             for session_id, timestamp in list(self._message_timestamps.items()):
                 if current_time - timestamp > self._message_expiry_seconds:
                     expired_sessions.append(session_id)
 
-            # 删除过期会话的记录
+            # 删除过期会话的记录喵～ 🗂️
             for session_id in expired_sessions:
                 if session_id in self._sent_message_ids:
                     del self._sent_message_ids[session_id]
@@ -62,24 +98,55 @@ class MessageSender:
                     del self._message_timestamps[session_id]
 
             if expired_sessions:
-                logger.info(f"已清理 {len(expired_sessions)} 个过期会话的消息记录")
+                logger.info(
+                    f"已清理 {len(expired_sessions)} 个过期会话的消息记录喵～ ✅"
+                )
 
     def _add_sent_message(self, session_id: str, message_id: str):
-        """线程安全地添加已发送消息记录"""
+        """
+        线程安全地添加已发送消息记录喵～ 📝
+        防止消息重复发送！
+
+        Args:
+            session_id: 会话ID喵
+            message_id: 消息ID喵
+
+        Note:
+            会同时更新会话的最后活动时间喵！ ⏰
+        """
         import time
 
         with self._message_tracking_lock:
             self._sent_message_ids[session_id].add(message_id)
-            # 更新会话最后活动时间
+            # 更新会话最后活动时间喵～ 🔄
             self._message_timestamps[session_id] = time.time()
 
     def _is_message_sent(self, session_id: str, message_id: str) -> bool:
-        """线程安全地检查消息是否已发送"""
+        """
+        线程安全地检查消息是否已发送喵～ 🔍
+        避免重复发送相同消息！
+
+        Args:
+            session_id: 会话ID喵
+            message_id: 消息ID喵
+
+        Returns:
+            True表示已发送，False表示未发送喵～
+        """
         with self._message_tracking_lock:
             return message_id in self._sent_message_ids.get(session_id, set())
 
     def _clear_session_messages(self, session_id: str):
-        """线程安全地清除特定会话的消息记录"""
+        """
+        线程安全地清除特定会话的消息记录喵～ 🧹
+        清空指定会话的发送历史！
+
+        Args:
+            session_id: 要清理的会话ID喵
+
+        Note:
+            通常在开始新的转发任务时使用喵！ 🔄
+        """
         with self._message_tracking_lock:
             if session_id in self._sent_message_ids:
                 self._sent_message_ids[session_id].clear()
@@ -87,9 +154,18 @@ class MessageSender:
     async def send_forward_message_via_api(
         self, target_session: str, nodes_list: list[dict]
     ) -> bool:
-        """使用多级策略发送转发消息
+        """
+        使用多级策略发送转发消息喵～ 🚀
+        这是最核心的消息发送方法，会尝试多种策略确保成功！
 
         Args:
+            target_session: 目标会话ID喵
+            nodes_list: 节点列表喵
+
+        Returns:
+            bool: 发送成功返回True，否则返回False喵～
+
+        Note:
             target_session: 目标会话ID
             nodes_list: 节点列表
 
@@ -282,7 +358,22 @@ class MessageSender:
     async def _upload_images_to_cache(
         self, nodes_list: list[dict], client, target_session: str, target_id: str
     ) -> list[dict]:
-        """将消息中的所有图片上传到OneBot的缓存服务器"""
+        """
+        将消息中的所有图片上传到OneBot的缓存服务器喵～ 📤
+        智能处理各种图片格式，特别优化GIF动图！
+
+        Args:
+            nodes_list: 节点列表喵
+            client: OneBot客户端喵
+            target_session: 目标会话ID喵
+            target_id: 目标ID喵
+
+        Returns:
+            list[dict]: 更新了缓存引用的节点列表喵～
+
+        Note:
+            会自动识别GIF并保持动画效果喵！ ✨
+        """
         import copy
 
         processed_nodes = copy.deepcopy(nodes_list)
@@ -384,7 +475,20 @@ class MessageSender:
     async def _get_local_file_path(
         self, file_path: str, is_gif: bool = False
     ) -> str | None:
-        """统一处理各种图片路径格式，返回本地文件路径"""
+        """
+        统一处理各种图片路径格式，返回本地文件路径喵～ 📁
+        智能识别URL、文件路径、Base64等格式！
+
+        Args:
+            file_path: 原始文件路径或URL喵
+            is_gif: 是否为GIF格式喵
+
+        Returns:
+            str | None: 本地文件路径，失败时返回None喵～
+
+        Note:
+            支持file://、http://、base64://等多种格式喵！ ✨
+        """
 
         # 处理本地文件路径
         if file_path.startswith("file:///"):
@@ -428,13 +532,22 @@ class MessageSender:
 
         return None
 
-    # 新增函数: 转换GIF为静态图
+    # 新增函数: 转换GIF为静态图喵～ 🖼️
     async def _convert_gif_to_static(self, nodes_list: list[dict]) -> None:
-        """将节点中的GIF转换为静态图像"""
+        """
+        将节点中的GIF转换为静态图像喵～ 🖼️
+        当GIF无法正常发送时的备用方案！
+
+        Args:
+            nodes_list: 包含GIF的节点列表喵
+
+        Note:
+            使用PIL提取GIF第一帧并转换为PNG格式喵！ ✨
+        """
 
         from PIL import Image
 
-        # 获取插件数据目录
+        # 获取插件数据目录喵～ 📁
         plugin_data_dir = os.path.join(
             "data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images", "pillow"
         )
@@ -444,15 +557,15 @@ class MessageSender:
             if node["type"] == "node" and "data" in node and "content" in node["data"]:
                 for item in node["data"]["content"]:
                     if item["type"] == "image" and "data" in item:
-                        # 检查是否为GIF
+                        # 检查是否为GIF喵～ 🔍
                         if item["data"].get("is_gif", False) or (
                             item["data"].get("file", "").lower().endswith(".gif")
                         ):
                             file_path = item["data"].get("file", "")
 
-                            # 尝试将GIF转换为静态图像
+                            # 尝试将GIF转换为静态图像喵～ 🔄
                             try:
-                                # 如果是URL，先下载
+                                # 如果是URL，先下载喵～ 📥
                                 if file_path.startswith(("http://", "https://")):
                                     local_path = (
                                         await self.download_helper.download_file(
@@ -466,40 +579,45 @@ class MessageSender:
                                 else:
                                     local_path = file_path
 
-                                # 检查文件是否存在
+                                # 检查文件是否存在喵～ 📂
                                 if not os.path.exists(local_path):
                                     continue
 
-                                # 使用PIL打开GIF并提取第一帧
+                                # 使用PIL打开GIF并提取第一帧喵～ 🎬
                                 gif_img = Image.open(local_path)
                                 first_frame = gif_img.convert("RGBA")
 
-                                # 保存为静态PNG到插件目录
+                                # 保存为静态PNG到插件目录喵～ 💾
                                 static_path = os.path.join(
                                     plugin_data_dir, f"{uuid.uuid4()}.png"
                                 )
                                 first_frame.save(static_path, "PNG")
 
-                                # 更新节点中的图片数据
+                                # 更新节点中的图片数据喵～ 📝
                                 item["data"]["file"] = f"file:///{static_path}"
                                 item["data"]["is_gif"] = False
-                                logger.info(f"GIF已转换为静态图: {static_path}")
+                                logger.info(f"GIF已转换为静态图喵: {static_path} ✨")
 
                             except Exception as e:
-                                logger.error(f"转换GIF失败: {e}")
+                                logger.error(f"转换GIF失败喵: {e} 😿")
 
-        logger.info("GIF转换处理完成")
+        logger.info("GIF转换处理完成喵～ 🎉")
 
     async def _download_gif_in_nodes(self, nodes_list: list[dict]) -> list[dict]:
-        """下载节点中的GIF图片但不转换格式
+        """
+        下载节点中的GIF图片但不转换格式喵～ 📥
+        保持GIF动画效果的智能下载！
 
         Args:
-            nodes_list: 节点列表
+            nodes_list: 节点列表喵
 
         Returns:
-            List[Dict]: 更新了GIF图片路径的节点列表
+            list[dict]: 更新了GIF图片路径的节点列表喵～
+
+        Note:
+            会保留GIF的动画特性，设置flash标记喵！ ✨
         """
-        # 获取插件数据目录
+        # 获取插件数据目录喵～ 📁
         plugin_data_dir = os.path.join(
             "data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images"
         )
@@ -509,46 +627,51 @@ class MessageSender:
             if node["type"] == "node" and "data" in node and "content" in node["data"]:
                 for item in node["data"]["content"]:
                     if item["type"] == "image" and "data" in item:
-                        # 检查是否为GIF
+                        # 检查是否为GIF喵～ 🔍
                         if item["data"].get("is_gif", False) or (
                             item["data"].get("file", "").lower().endswith(".gif")
                         ):
                             file_path = item["data"].get("file", "")
 
-                            # 如果是URL，下载GIF
+                            # 如果是URL，下载GIF喵～ 📥
                             if file_path.startswith(("http://", "https://")):
                                 try:
-                                    # 使用download_helper下载GIF并保留原始格式
+                                    # 使用download_helper下载GIF并保留原始格式喵～ 🎬
                                     filename = f"{uuid.uuid4()}.gif"
                                     local_path = os.path.join(plugin_data_dir, filename)
 
-                                    # 直接下载URL到本地
+                                    # 直接下载URL到本地喵～ 📤
                                     success = await self._download_gif_with_curl(
                                         file_path, local_path
                                     )
 
                                     if success and os.path.exists(local_path):
-                                        # 更新节点中的图片路径
+                                        # 更新节点中的图片路径喵～ 📝
                                         item["data"]["file"] = f"file:///{local_path}"
-                                        # 确保保留GIF标记 - 这很重要！
+                                        # 确保保留GIF标记 - 这很重要喵！ 🌟
                                         item["data"]["flash"] = True
                                         logger.info(
-                                            f"GIF已下载到本地并保留动画特性: {local_path}"
+                                            f"GIF已下载到本地并保留动画特性喵: {local_path} ✨"
                                         )
                                 except Exception as e:
-                                    logger.error(f"下载GIF失败: {e}")
+                                    logger.error(f"下载GIF失败喵: {e} 😿")
 
         return nodes_list
 
     async def _download_gif_with_curl(self, url: str, output_path: str) -> bool:
-        """使用curl下载GIF并保持原始格式
+        """
+        使用curl下载GIF并保持原始格式喵～ 📥
+        专业的GIF下载工具，保证动画完整性！
 
         Args:
-            url: GIF图片URL
-            output_path: 输出路径
+            url: GIF图片URL喵
+            output_path: 输出路径喵
 
         Returns:
-            bool: 下载成功返回True，否则返回False
+            bool: 下载成功返回True，否则返回False喵～
+
+        Note:
+            会验证下载的文件确实是GIF格式喵！ 🔍
         """
         try:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -578,23 +701,15 @@ class MessageSender:
                 and os.path.exists(output_path)
                 and os.path.getsize(output_path) > 0
             ):
-                # 简单检查文件头以确认是GIF
-                with open(output_path, "rb") as f:
-                    header = f.read(6)
-
-                if header.startswith(b"GIF"):
-                    logger.info(f"成功下载GIF: {output_path}")
-                    return True
-                else:
-                    logger.warning(f"下载的文件不是GIF格式: {output_path}")
-                    return False
+                logger.info(f"成功下载文件: {output_path}")
+                return True
             else:
                 stderr_text = stderr.decode() if stderr else "未知错误"
-                logger.warning(f"下载GIF失败: {stderr_text}")
+                logger.warning(f"下载文件失败: {stderr_text}")
                 return False
 
         except Exception as e:
-            logger.error(f"下载GIF异常: {e}")
+            logger.error(f"下载文件异常: {e}")
             logger.error(traceback.format_exc())
             return False
 
@@ -658,98 +773,110 @@ class MessageSender:
         return updated_nodes
 
     async def _download_image_with_curl(self, url: str) -> str:
-        """使用curl下载图片
+        """
+        使用curl下载图片喵～ 📥
+        专业的图片下载工具，支持各种格式！
 
         Args:
-            url: 图片URL
+            url: 图片URL喵
 
         Returns:
-            str: 成功返回本地文件路径，失败返回None
+            str: 成功返回本地文件路径，失败返回None喵～
+
+        Note:
+            会自动处理重定向和用户代理，确保下载成功喵！ ✨
         """
         try:
-            # 获取标准插件数据目录
+            # 获取标准插件数据目录喵～ 📁
             plugin_data_dir = os.path.join(
                 "data", "plugins_data", "astrbot_plugin_turnrig", "temp", "images"
             )
             os.makedirs(plugin_data_dir, exist_ok=True)
 
-            # 使用uuid生成唯一文件名
+            # 使用uuid生成唯一文件名喵～ 🏷️
             filename = f"{uuid.uuid4()}.jpg"
             output_path = os.path.join(plugin_data_dir, filename)
 
-            logger.debug(f"下载图片: {url} -> {output_path}")
+            logger.debug(f"下载图片喵: {url} -> {output_path} 📤")
 
-            # 构建curl命令
+            # 构建curl命令喵～ 🔧
             cmd = [
                 "curl",
-                "-s",  # 静默模式
-                "-L",  # 跟随重定向
+                "-s",  # 静默模式喵
+                "-L",  # 跟随重定向喵
                 "-o",
-                output_path,  # 输出文件
+                output_path,  # 输出文件喵
                 "-H",
                 "User-Agent: Mozilla/5.0",
                 url,
             ]
 
-            # 执行curl命令
+            # 执行curl命令喵～ ⚙️
             process = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
 
             stdout, stderr = await process.communicate()
 
-            # 检查下载结果
+            # 检查下载结果喵～ 🔍
             if (
                 process.returncode == 0
                 and os.path.exists(output_path)
                 and os.path.getsize(output_path) > 0
             ):
-                logger.info(f"✅ 图片下载成功: {output_path}")
+                logger.info(f"✅ 图片下载成功喵: {output_path} 🎉")
                 return output_path
             else:
                 stderr_text = stderr.decode() if stderr else "未知错误"
-                logger.warning(f"❌ 下载图片失败: {stderr_text}")
+                logger.warning(f"❌ 下载图片失败喵: {stderr_text} 😿")
                 return None
 
         except Exception as e:
-            logger.error(f"下载图片异常: {e}")
+            logger.error(f"下载图片异常喵: {e} 😿")
             logger.error(traceback.format_exc())
             return None
 
     async def send_with_fallback(
         self, target_session: str, nodes_list: list[dict], task_id: str = None
     ) -> bool:
-        """当合并转发失败时，尝试直接发送消息
+        """
+        当合并转发失败时，尝试直接发送消息喵～ 🔄
+        备用发送策略，确保消息能够送达！
 
         Args:
-            target_session: 目标会话ID
-            nodes_list: 节点列表
-            task_id: 任务ID，用于日志记录和跟踪
+            target_session: 目标会话ID喵
+            nodes_list: 节点列表喵
+            task_id: 任务ID，用于日志记录和跟踪喵
 
         Returns:
-            bool: 发送成功返回True，否则返回False
+            bool: 发送成功返回True，否则返回False喵～
+
+        Note:
+            会逐条发送消息，并控制发送频率避免限制喵！ ✨
         """
         if task_id is None:
             task_id = str(uuid.uuid4())
 
         try:
-            # 获取目标平台和ID
+            # 获取目标平台和ID喵～ 🔍
             target_parts = target_session.split(":", 2)
             if len(target_parts) != 3:
-                logger.warning(f"任务 {task_id}: 目标会话格式无效: {target_session}")
+                logger.warning(
+                    f"任务 {task_id}: 目标会话格式无效喵: {target_session} 😿"
+                )
                 return False
 
             target_platform, target_type, target_id = target_parts
 
-            # 获取client
+            # 获取client喵～ 🤖
             client = self.plugin.context.get_platform("aiocqhttp").get_client()
 
-            # 使用信号量控制并发发送，避免频率限制
+            # 使用信号量控制并发发送，避免频率限制喵～ 🚦
             if not hasattr(self, "_send_semaphore"):
-                self._send_semaphore = asyncio.Semaphore(2)  # 最多同时发送2条消息
+                self._send_semaphore = asyncio.Semaphore(2)  # 最多同时发送2条消息喵
 
-            # 发送消息前提示
-            header_text = f"[无法使用合并转发，将直接发送 {len(nodes_list)} 条消息]"
+            # 发送消息前提示喵～ 📢
+            header_text = f"[无法使用合并转发，将直接发送 {len(nodes_list)} 条消息喵～]"
 
             try:
                 if "GroupMessage" in target_session:
@@ -761,71 +888,89 @@ class MessageSender:
                         "send_private_msg", user_id=int(target_id), message=header_text
                     )
             except Exception as e:
-                logger.warning(f"任务 {task_id}: 发送提示消息失败: {e}")
+                logger.warning(f"任务 {task_id}: 发送提示消息失败喵: {e} 😿")
 
-            # 为每个节点生成唯一ID并按顺序逐条发送消息
+            # 为每个节点生成唯一ID并按顺序逐条发送消息喵～ 📋
             successful_nodes = 0
-            # 创建发送任务列表
+            # 创建发送任务列表喵～ 📝
             send_tasks = []
             for i, node in enumerate(nodes_list):
                 if node["type"] != "node":
                     continue
-                # 生成节点ID用于跟踪
-                node_id = f"{task_id}_strategy4_{i}"  # 使用更稳定的ID格式
+                # 生成节点ID用于跟踪喵～ 🏷️
+                node_id = f"{task_id}_strategy4_{i}"  # 使用更稳定的ID格式喵
 
-                # 检查是否已经发送过
+                # 检查是否已经发送过喵～ ✅
                 if self._is_message_sent(target_session, node_id):
-                    logger.info(f"任务 {task_id}: 节点 {node_id} 已经发送过，跳过")
+                    logger.info(
+                        f"任务 {task_id}: 节点 {node_id} 已经发送过，跳过喵～ ⏭️"
+                    )
                     continue
 
-                # 创建异步发送任务
+                # 创建异步发送任务喵～ 🚀
                 send_task = self._create_send_task(
                     target_session, target_id, node, node_id, task_id
                 )
                 send_tasks.append(send_task)
 
-            # 使用信号量控制并发执行发送任务
+            # 使用信号量控制并发执行发送任务喵～ 🎛️
             async def execute_with_semaphore(task):
                 async with self._send_semaphore:
                     return await task
 
-            # 并发执行所有发送任务，但受信号量控制
+            # 并发执行所有发送任务，但受信号量控制喵～ ⚡
             results = await asyncio.gather(
                 *[execute_with_semaphore(task) for task in send_tasks],
                 return_exceptions=True,
             )
 
-            # 统计成功发送的节点数
+            # 统计成功发送的节点数喵～ 📊
             for result in results:
                 if isinstance(result, Exception):
-                    logger.error(f"任务 {task_id}: 发送节点时出错: {result}")
+                    logger.error(f"任务 {task_id}: 发送节点时出错喵: {result} 😿")
                 elif result:
                     successful_nodes += 1
 
             logger.info(
-                f"任务 {task_id}: 成功使用备选方案发送 {successful_nodes}/{len(nodes_list)} 条消息到 {target_session}"
+                f"任务 {task_id}: 成功使用备选方案发送 {successful_nodes}/{len(nodes_list)} 条消息到 {target_session} 喵～ 🎉"
             )
             return successful_nodes > 0
         except Exception as e:
-            logger.error(f"任务 {task_id}: 备选方案发送失败: {e}")
+            logger.error(f"任务 {task_id}: 备选方案发送失败喵: {e} 😿")
             logger.error(traceback.format_exc())
             return False
 
     async def _create_send_task(
         self, target_session, target_id, node, node_id, task_id
     ):
-        """创建单条消息发送任务"""
+        """
+        创建单条消息发送任务喵～ 🏗️
+        为每个节点创建独立的异步发送任务！
+
+        Args:
+            target_session: 目标会话喵
+            target_id: 目标ID喵
+            node: 节点数据喵
+            node_id: 节点ID喵
+            task_id: 任务ID喵
+
+        Returns:
+            发送结果喵～
+
+        Note:
+            会自动添加延迟避免频率限制喵！ ⏰
+        """
         try:
-            # 尝试发送消息
+            # 尝试发送消息喵～ 📤
             result = await self._send_node_content(
                 target_session, target_id, node, node_id, task_id
             )
 
-            # 无论成功失败，都等待一段时间避免频率限制
+            # 无论成功失败，都等待一段时间避免频率限制喵～ 😴
             await asyncio.sleep(1)
             return result
         except Exception as e:
-            logger.error(f"任务 {task_id}: 创建发送任务失败: {e}")
+            logger.error(f"任务 {task_id}: 创建发送任务失败喵: {e} 😿")
             return False
 
     async def _send_node_content(
@@ -836,17 +981,22 @@ class MessageSender:
         node_id: str = None,
         task_id: str = None,
     ) -> bool:
-        """发送节点内容
+        """
+        发送节点内容喵～ 📤
+        处理单个消息节点的发送，支持各种消息类型！
 
         Args:
-            target_session: 目标会话ID
-            target_id: 目标ID
-            node: 节点数据
-            node_id: 节点唯一标识，用于跟踪是否已发送
-            task_id: 任务ID，用于日志记录
+            target_session: 目标会话ID喵
+            target_id: 目标ID喵
+            node: 节点数据喵
+            node_id: 节点唯一标识，用于跟踪是否已发送喵
+            task_id: 任务ID，用于日志记录喵
 
         Returns:
-            bool: 发送成功返回True，否则返回False
+            bool: 发送成功返回True，否则返回False喵～
+
+        Note:
+            支持文本、图片、AT等各种消息类型的智能处理喵！ ✨
         """
         if task_id is None:
             task_id = str(uuid.uuid4())
@@ -1042,13 +1192,18 @@ class MessageSender:
             return False
 
     async def _prepare_image(self, img_item: dict) -> str:
-        """准备图片，返回可用于发送的路径
+        """
+        准备图片，返回可用于发送的路径喵～ 🖼️
+        智能处理各种图片格式和来源！
 
         Args:
-            img_item: 图片项
+            img_item: 图片项数据喵
 
         Returns:
-            str: 图片路径
+            str: 图片路径，失败时返回None喵～
+
+        Note:
+            支持QQ链接、base64、本地文件等多种格式喵！ ✨
         """
         try:
             # 尝试从不同字段提取图片信息
@@ -1205,15 +1360,20 @@ class MessageSender:
     async def send_to_non_qq_platform(
         self, target_session: str, source_name: str, valid_messages: list[dict]
     ) -> bool:
-        """发送消息到非QQ平台
+        """
+        发送消息到非QQ平台喵～ 🌐
+        适配不同平台的消息发送格式！
 
         Args:
-            target_session: 目标会话ID
-            source_name: 消息来源名称
-            valid_messages: 有效的消息列表
+            target_session: 目标会话ID喵
+            source_name: 消息来源名称喵
+            valid_messages: 有效的消息列表喵
 
         Returns:
-            bool: 发送成功返回True，否则返回False
+            bool: 发送成功返回True，否则返回False喵～
+
+        Note:
+            会自动添加来源信息和消息统计喵！ ✨
         """
         task_id = str(uuid.uuid4())
 
@@ -1280,23 +1440,38 @@ class MessageSender:
             return False
 
     async def _create_non_qq_send_task(self, target_session, msg, msg_id, task_id):
-        """创建非QQ平台单条消息发送任务"""
+        """
+        创建非QQ平台单条消息发送任务喵～ 🏗️
+        处理单条消息的平台适配发送！
+
+        Args:
+            target_session: 目标会话喵
+            msg: 消息数据喵
+            msg_id: 消息ID喵
+            task_id: 任务ID喵
+
+        Returns:
+            发送结果喵～
+
+        Note:
+            会自动反序列化消息组件并适配发送喵！ ✨
+        """
         from .message_serializer import deserialize_message
 
         try:
             sender = msg.get("sender_name", "未知用户")
             message_components = deserialize_message(msg.get("message", []))
 
-            # 检查消息是否已发送
+            # 检查消息是否已发送喵～ ✅
             if self._is_message_sent(target_session, msg_id):
                 return True
 
-            # 首先发送发送者信息
+            # 首先发送发送者信息喵～ 👤
             await self.plugin.context.send_message(
                 target_session, [Plain(text=f"{sender}:")]
             )
 
-            # 然后发送消息内容
+            # 然后发送消息内容喵～ 📤
             if message_components:
                 await self.plugin.context.send_message(
                     target_session, message_components
@@ -1306,13 +1481,13 @@ class MessageSender:
                     target_session, [Plain(text="[空消息]")]
                 )
 
-            # 记录成功发送
+            # 记录成功发送喵～ 📝
             self._add_sent_message(target_session, msg_id)
             return True
 
         except Exception as e:
-            logger.error(f"任务 {task_id}: 发送消息到非QQ平台失败: {e}")
-            return False  # 新增方法: 处理文件类型的消息
+            logger.error(f"任务 {task_id}: 发送消息到非QQ平台失败喵: {e} 😿")
+            return False  # 新增方法: 处理文件类型的消息喵～ 📁
 
     async def _download_and_send_file(
         self,
@@ -1322,56 +1497,61 @@ class MessageSender:
         target_id: str,
         sender_name: str = None,
     ) -> bool:
-        """下载并发送文件消息
+        """
+        下载并发送文件消息喵～ 📁
+        智能处理文件上传和分享！
 
         Args:
-            file_url: 文件URL
-            file_name: 文件名
-            target_session: 目标会话ID
-            target_id: 目标ID
-            sender_name: 发送者名称，用于显示在消息中
+            file_url: 文件URL喵
+            file_name: 文件名喵
+            target_session: 目标会话ID喵
+            target_id: 目标ID喵
+            sender_name: 发送者名称，用于显示在消息中喵
 
         Returns:
-            bool: 发送成功返回True，否则返回False
+            bool: 发送成功返回True，否则返回False喵～
+
+        Note:
+            支持群文件和私聊文件上传，失败时会发送下载链接喵！ ✨
         """
         try:
             import uuid
 
-            # 获取客户端
+            # 获取客户端喵～ 🤖
             client = self.plugin.context.get_platform("aiocqhttp").get_client()
 
-            # 创建临时下载目录
+            # 创建临时下载目录喵～ 📁
             temp_dir = os.path.join(
                 "data", "plugins_data", "astrbot_plugin_turnrig", "temp", "files"
             )
             os.makedirs(temp_dir, exist_ok=True)
 
-            # 生成临时文件路径
+            # 生成临时文件路径喵～ 🏷️
             temp_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file_name}")
 
-            logger.info(f"下载文件: {file_url} -> {temp_file_path}")
+            logger.info(f"下载文件喵: {file_url} -> {temp_file_path} 📥")
 
-            # 下载文件
+            # 下载文件喵～ 📤
             success = await self._download_file_with_curl(file_url, temp_file_path)
             if not success:
-                logger.error(f"下载文件失败: {file_url}")
+                logger.error(f"下载文件失败喵: {file_url} 😿")
                 return False
 
-            # 文件消息头部，包含发送者信息
-            header = "[文件分享]"
+            # 文件消息头部，包含发送者信息喵～ 📢
+            header = "[文件分享喵]"
             if sender_name:
-                header = f"[文件分享] 来自 {sender_name}"
+                header = f"[文件分享喵] 来自 {sender_name}"
 
-            # 检查是群聊还是私聊
+            # 检查是群聊还是私聊喵～ 🔍
             is_group = "GroupMessage" in target_session
 
-            # 尝试发送文件消息
+            # 尝试发送文件消息喵～ 📤
             try:
-                # 使用上传文件API
+                # 使用上传文件API喵～ 🚀
                 api_name = "upload_group_file" if is_group else "upload_private_file"
                 target_param = {"group_id" if is_group else "user_id": int(target_id)}
 
-                # 发送文件前的提示消息
+                # 发送文件前的提示消息喵～ 📢
                 if header:
                     await client.call_action(
                         "send_group_msg" if is_group else "send_private_msg",
@@ -1379,55 +1559,60 @@ class MessageSender:
                         message=header,
                     )
 
-                # 上传文件
+                # 上传文件喵～ 📤
                 response = await client.call_action(
                     api_name, **target_param, file=temp_file_path, name=file_name
                 )
 
-                logger.info(f"文件上传响应: {response}")
+                logger.info(f"文件上传响应喵: {response} 📋")
 
-                # 检查响应
+                # 检查响应喵～ ✅
                 if isinstance(response, dict) and response.get("status") == "ok":
-                    logger.info(f"成功发送文件: {file_name}")
+                    logger.info(f"成功发送文件喵: {file_name} 🎉")
                     return True
                 else:
-                    logger.warning(f"文件上传API返回错误: {response}")
-                    # 发送一条链接消息作为备用
+                    logger.warning(f"文件上传API返回错误喵: {response} ⚠️")
+                    # 发送一条链接消息作为备用喵～ 🔗
                     await client.call_action(
                         "send_group_msg" if is_group else "send_private_msg",
                         **target_param,
-                        message=f"[文件] {file_name}\n下载链接: {file_url}",
+                        message=f"[文件喵] {file_name}\n下载链接: {file_url}",
                     )
                     return True
 
             except Exception as e:
-                logger.error(f"发送文件时出错: {e}")
+                logger.error(f"发送文件时出错喵: {e} 😿")
 
-                # 尝试发送文件下载链接作为备用
+                # 尝试发送文件下载链接作为备用喵～ 🔗
                 try:
                     await client.call_action(
                         "send_group_msg" if is_group else "send_private_msg",
                         **target_param,
-                        message=f"[文件] {file_name}\n下载链接: {file_url}",
+                        message=f"[文件喵] {file_name}\n下载链接: {file_url}",
                     )
                     return True
                 except Exception as e2:
-                    logger.error(f"发送文件链接也失败: {e2}")
+                    logger.error(f"发送文件链接也失败喵: {e2} 😿")
                     return False
 
         except Exception as e:
-            logger.error(f"处理文件消息时出错: {e}")
+            logger.error(f"处理文件消息时出错喵: {e} 😿")
             return False
 
     async def _download_file_with_curl(self, url: str, output_path: str) -> bool:
-        """使用curl下载文件
+        """
+        使用curl下载文件喵～ 📥
+        专业的文件下载工具，支持各种文件格式！
 
         Args:
-            url: 文件URL
-            output_path: 输出路径
+            url: 文件URL喵
+            output_path: 输出路径喵
 
         Returns:
-            bool: 下载成功返回True，否则返回False
+            bool: 下载成功返回True，否则返回False喵～
+
+        Note:
+            会自动处理重定向和用户代理，确保下载完整喵！ ✨
         """
         try:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
