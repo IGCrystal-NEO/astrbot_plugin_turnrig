@@ -22,6 +22,7 @@ from typing import Any
 
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
+from .message_utils import fetch_forward_message_nodes
 
 
 def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str, Any]]:
@@ -178,6 +179,26 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                 serialized.append({"type": "node", "data": node_data})
             elif isinstance(msg, Comp.Face):
                 serialized.append({"type": "face", "id": getattr(msg, "id", "")})
+            elif hasattr(msg, 'type') and str(getattr(msg, 'type', '')).lower() == 'forward':
+                # 处理转发消息组件喵～ 📤
+                forward_id = getattr(msg, "id", "")
+                logger.info(f"检测到转发消息组件喵: id={forward_id} 📨")
+                
+                # 同步版本无法获取转发内容，使用简单表示喵～ 📝
+                serialized.append({
+                    "type": "plain",
+                    "text": f"[转发消息: {forward_id[:20]}...]"
+                })
+            elif str(type(msg)).lower().find('forward') != -1:
+                # 备用检测方法：通过类型名称检测Forward组件喵～ 🔍
+                forward_id = getattr(msg, "id", "")
+                logger.info(f"通过类型名称检测到转发消息组件喵: type={type(msg)}, id={forward_id} 📨")
+                
+                # 同步版本无法获取转发内容，使用简单表示喵～ 📝
+                serialized.append({
+                    "type": "plain",
+                    "text": f"[转发消息: {forward_id[:20]}...]"
+                })
             else:
                 # 处理未知类型的消息喵～ ❓
                 data = {}
@@ -205,7 +226,7 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
 
 
 async def async_serialize_message(
-    message: list[Comp.BaseMessageComponent],
+    message: list[Comp.BaseMessageComponent], event=None
 ) -> list[dict[str, Any]]:
     """
     将消息组件列表异步序列化为可存储的格式喵～ 📦✨
@@ -213,6 +234,7 @@ async def async_serialize_message(
 
     Args:
         message: 消息组件列表喵
+        event: 消息事件对象，用于获取转发消息内容喵
 
     Returns:
         可存储的序列化消息喵～
@@ -375,12 +397,52 @@ async def async_serialize_message(
 
                 if hasattr(msg, "content") and isinstance(msg.content, list):
                     node_data["content"] = await async_serialize_message(
-                        msg.content
-                    )  # 递归使用异步版本
+                        msg.content, event
+                    )  # 递归使用异步版本，传递event
 
                 serialized.append({"type": "node", "data": node_data})
             elif isinstance(msg, Comp.Face):
                 serialized.append({"type": "face", "id": getattr(msg, "id", "")})
+            elif hasattr(msg, '__class__') and 'Forward' in str(msg.__class__):
+                # 处理转发消息组件喵～ 📤
+                forward_id = getattr(msg, "id", "")
+                logger.info(f"检测到Forward组件喵: id={forward_id} 📨")
+                
+                # 尝试获取转发消息的实际内容喵～ 🔍
+                if event:
+                    forward_nodes = await fetch_forward_message_nodes(forward_id, event)
+                    if forward_nodes and len(forward_nodes) > 0:
+                        logger.info(f"成功获取转发消息节点内容喵: {len(forward_nodes)} 个节点 ✅")
+                        # 创建包含节点数据的转发消息标记喵～ 📋
+                        serialized.append({
+                            "type": "forward",
+                            "id": forward_id,
+                            "nodes": forward_nodes
+                        })
+                    else:
+                        # 获取失败时使用简单的文本表示喵～ 📝
+                        logger.warning(f"获取转发消息内容失败，使用简单表示喵: {forward_id} 😿")
+                        serialized.append({
+                            "type": "plain",
+                            "text": f"[转发消息: {forward_id[:20]}...]"
+                        })
+                else:
+                    # 没有event对象时使用简单的表示喵～ ⚠️
+                    logger.warning(f"缺少event对象，无法获取转发消息内容喵: {forward_id} 😿")
+                    serialized.append({
+                        "type": "plain", 
+                        "text": f"[转发消息: {forward_id[:20]}...]"
+                    })
+            elif hasattr(msg, 'type') and str(getattr(msg, 'type', '')).lower() == 'forward':
+                # 处理转发消息组件喵～ 📤
+                forward_id = getattr(msg, "id", "")
+                logger.info(f"检测到转发消息组件喵: id={forward_id} 📨")
+                
+                # 同步版本无法获取转发内容，使用简单表示喵～ 📝
+                serialized.append({
+                    "type": "plain",
+                    "text": f"[转发消息: {forward_id[:20]}...]"
+                })
             else:
                 data = {}
                 for attr in ["text", "url", "id", "name", "uin", "content"]:
@@ -453,6 +515,10 @@ def deserialize_message(serialized: list[dict]) -> list[Comp.BaseMessageComponen
                 )
             elif msg["type"] == "face":
                 components.append(Comp.Face(id=msg["id"]))
+            elif msg["type"] == "forward":
+                # 对于转发消息，创建一个简单的文本表示喵～ 📤
+                forward_id = msg.get("id", msg.get("data", {}).get("id", "未知ID"))
+                components.append(Comp.Plain(text=f"[转发消息: {forward_id}]"))
             elif msg["type"] == "node":
                 node_content = []
                 if msg.get("content"):
@@ -497,18 +563,19 @@ def compress_message(message: list[Comp.BaseMessageComponent]) -> str:
     return base64.b64encode(compressed).decode("utf-8")
 
 
-async def async_compress_message(message: list[Comp.BaseMessageComponent]) -> str:
+async def async_compress_message(message: list[Comp.BaseMessageComponent], event=None) -> str:
     """将消息异步序列化并压缩为base64字符串，减少存储空间
 
     Args:
         message: 消息组件列表
+        event: 消息事件对象，用于获取转发消息内容喵
 
     Returns:
         str: 压缩后的base64字符串
     """
     import zlib
 
-    serialized = await async_serialize_message(message)
+    serialized = await async_serialize_message(message, event)
     json_data = json.dumps(serialized)
     compressed = zlib.compress(json_data.encode("utf-8"))
     return base64.b64encode(compressed).decode("utf-8")

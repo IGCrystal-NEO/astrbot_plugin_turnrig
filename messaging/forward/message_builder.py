@@ -108,79 +108,37 @@ class MessageBuilder:
             else:
                 logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)} 喵～ ❓")
 
-        # 构建转发节点喵～ 🏗️
-        try:
-            node = {
-                "type": "node",
-                "data": {
-                    "name": sender_name,
-                    "uin": sender_id_str,
-                    "content": message_components,
-                    "time": timestamp,
-                },
-            }
-
-            # 记录组件信息（调试用）喵～ 🔍
-            for comp in message_components:
-                if comp.get("type") == "image":
-                    logger.debug(
-                        f"图片组件详情喵: {json.dumps(comp, ensure_ascii=False)} 🖼️"
-                    )
-
-            return node
-
-        except Exception as e:
-            # 构建失败了喵，返回一个安全的默认节点 😿
-            logger.error(f"构建转发节点失败喵: {str(e)}")
-            return {
-                "type": "node",
-                "data": {
-                    "name": sender_name,
-                    "uin": sender_id_str,
-                    "content": [{"type": "text", "data": {"text": "[构建节点失败喵]"}}],
-                    "time": timestamp,
-                },
-            }
-
         # 如果没有内容，使用纯文本消息喵～ 📝
         if not message_components:
             message_components = [{"type": "text", "data": {"text": "[空消息喵]"}}]
 
-        # 添加更详细的日志，帮助调试喵～ 📋
-        logger.debug(
-            f"构建转发节点喵: {sender_name}({sender_id_str}), 共 {len(message_components)} 个组件 🔢"
-        )
-        for i, comp in enumerate(
-            message_components[:3]
-        ):  # 只显示前三个组件避免日志过长喵～ 📊
-            if isinstance(comp, dict):
-                logger.debug(
-                    f"组件{i + 1}喵: 类型={comp.get('type')}, 数据={comp.get('data')} 📋"
-                )
-            else:
-                logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)} 喵～ ❓")
-
-        # 直接返回适合QQ API的字典格式喵～ 📤
+        # 构建转发节点喵～ 🏗️
         node_data = {
             "type": "node",
             "data": {
-                "uin": sender_id_str,
                 "name": sender_name,
+                "uin": sender_id_str,
                 "content": message_components,
                 "time": timestamp,
             },
         }
 
-        # 添加节点构建完整日志，便于调试喵～ 📝
+        # 添加详细的调试日志喵～ 📋
+        logger.debug(
+            f"构建转发节点喵: {sender_name}({sender_id_str}), 共 {len(message_components)} 个组件 🔢"
+        )
+        for i, comp in enumerate(message_components[:3]):  # 只显示前三个组件避免日志过长喵～ 📊
+            if isinstance(comp, dict):
+                logger.debug(f"组件{i + 1}喵: 类型={comp.get('type')}, 数据={comp.get('data')} 📋")
+            else:
+                logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)} 喵～ ❓")
+
+        # 添加图片组件详情日志喵～ 🖼️
         try:
             for comp in message_components:
                 if comp.get("type") == "image":
-                    logger.debug(
-                        f"图片组件详情喵: {json.dumps(comp, ensure_ascii=False)} 🖼️"
-                    )
-            logger.debug(
-                f"完整转发节点结构喵: {json.dumps(node_data, ensure_ascii=False)} 📋"
-            )
+                    logger.debug(f"图片组件详情喵: {json.dumps(comp, ensure_ascii=False)} 🖼️")
+            logger.debug(f"完整转发节点结构喵: {json.dumps(node_data, ensure_ascii=False)} 📋")
         except Exception as e:
             logger.debug(f"序列化节点结构失败喵: {e} 😿")
 
@@ -301,11 +259,23 @@ class MessageBuilder:
 
         # 转发消息（嵌套）
         elif comp_type == "forward":
-            # 对于嵌套转发，简化处理
-            return {
-                "type": "text",
-                "data": {"text": f"[转发消息: {comp.get('id', '未知ID')}]"},
-            }
+            # 检查是否包含节点数据喵～ 🔍
+            if "nodes" in comp and isinstance(comp["nodes"], list):
+                # 返回所有转发消息节点喵～ 📋
+                logger.info(f"处理包含 {len(comp['nodes'])} 个节点的转发消息喵: {comp.get('id', '未知ID')} 📨")
+                return comp["nodes"]  # 返回节点列表，会被extend到message_components中
+            else:
+                # 对于没有节点数据的转发，简化处理喵～ 📝
+                return {
+                    "type": "text",
+                    "data": {"text": f"[转发消息: {comp.get('id', '未知ID')}]"},
+                }
+
+        # 节点消息（来自转发消息解析）
+        elif comp_type == "node":
+            # 直接返回节点数据，不需要额外处理喵～ 📤
+            logger.info(f"处理转发消息节点喵: {comp.get('data', {}).get('name', '未知用户')} 📋")
+            return comp
 
         # 其他未知类型
         else:

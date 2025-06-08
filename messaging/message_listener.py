@@ -348,7 +348,7 @@ class MessageListener:
 
                     # 序列化消息 - 保存之前已探测到的特殊表情喵～ 📦
                     task_serialized_messages = await async_serialize_message(
-                        messages if messages else []
+                        messages if messages else [], event
                     )
 
                     # 合并普通消息和特殊表情消息喵～ 🔗
