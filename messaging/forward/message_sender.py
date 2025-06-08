@@ -19,6 +19,8 @@ class MessageSender:
         # 使用线程安全的消息跟踪字典，按会话ID分组
         self._message_tracking_lock = threading.RLock()
         self._sent_message_ids = defaultdict(set)
+        # 初始化消息时间戳记录字典
+        self._message_timestamps = {}
         # 设置消息ID过期时间（秒）
         self._message_expiry_seconds = 3600  # 一小时后过期
         # 启动清理任务
@@ -61,7 +63,7 @@ class MessageSender:
 
             if expired_sessions:
                 logger.info(f"已清理 {len(expired_sessions)} 个过期会话的消息记录")
-
+                
     def _add_sent_message(self, session_id: str, message_id: str):
         """线程安全地添加已发送消息记录"""
         import time
@@ -69,8 +71,6 @@ class MessageSender:
         with self._message_tracking_lock:
             self._sent_message_ids[session_id].add(message_id)
             # 更新会话最后活动时间
-            if not hasattr(self, "_message_timestamps"):
-                self._message_timestamps = {}
             self._message_timestamps[session_id] = time.time()
 
     def _is_message_sent(self, session_id: str, message_id: str) -> bool:
