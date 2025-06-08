@@ -63,7 +63,7 @@ class MessageSender:
 
             if expired_sessions:
                 logger.info(f"已清理 {len(expired_sessions)} 个过期会话的消息记录")
-                
+
     def _add_sent_message(self, session_id: str, message_id: str):
         """线程安全地添加已发送消息记录"""
         import time

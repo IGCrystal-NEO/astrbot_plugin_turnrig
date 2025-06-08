@@ -31,22 +31,22 @@ class MessageListener:
 
         try:
             logger.debug(f"开始提取 OneBot 字段，平台: {event.get_platform_name()}")
-            
+
             # 检查 message_obj 是否有 raw_message 属性
             if not hasattr(event.message_obj, "raw_message"):
                 logger.warning("event.message_obj 没有 raw_message 属性")
                 raise AttributeError("No raw_message attribute")
-            
+
             raw_event = event.message_obj.raw_message
             if not raw_event:
                 logger.warning("raw_message 为空")
                 raise ValueError("raw_message is None")
-                
+
             logger.info(f"获取到原始事件对象: {type(raw_event)}")
-            
+
             # 优先从 aiocqhttp_platform_adapter 传递的 raw_message 中获取原始 OneBot 字段
             if event.get_platform_name() == "aiocqhttp":
-                logger.debug(f"处理 aiocqhttp 平台的原始事件")
+                logger.debug("处理 aiocqhttp 平台的原始事件")
 
                 # 方法1: 直接从 OneBot Event 对象访问字段
                 if hasattr(raw_event, "message_type"):
@@ -75,11 +75,11 @@ class MessageListener:
                     logger.debug(f"raw_event 可用属性: {dir(raw_event)}")
                     if hasattr(raw_event, "__dict__"):
                         logger.debug(f"raw_event.__dict__: {raw_event.__dict__}")
-                    
+
                     # 尝试强制转换为字符串查看内容
                     raw_str = str(raw_event)
                     logger.debug(f"raw_event 字符串表示: {raw_str[:200]}...")
-                    
+
                     # 查找可能的 message_type 字段
                     if "message_type" in raw_str:
                         logger.debug("在字符串表示中找到 message_type 字段")
@@ -106,7 +106,7 @@ class MessageListener:
             # 发生错误时使用推断值
             astr_message_type = event.get_message_type()
             if astr_message_type.name == "GROUP_MESSAGE":
-                onebot_fields["message_type"] = "group"            
+                onebot_fields["message_type"] = "group"
             elif astr_message_type.name == "FRIEND_MESSAGE":
                 onebot_fields["message_type"] = "private"
             onebot_fields["sub_type"] = "normal"
