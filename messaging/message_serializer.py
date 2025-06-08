@@ -22,6 +22,7 @@ from typing import Any
 
 import astrbot.api.message_components as Comp
 from astrbot.api import logger
+
 from .message_utils import fetch_forward_message_nodes
 
 
@@ -183,7 +184,7 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                 # 处理转发消息组件喵～ 📤
                 forward_id = getattr(msg, "id", "")
                 logger.info(f"检测到转发消息组件喵: id={forward_id} 📨")
-                
+
                 # 同步版本无法获取转发内容，使用简单表示喵～ 📝
                 serialized.append({
                     "type": "plain",
@@ -193,7 +194,7 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                 # 备用检测方法：通过类型名称检测Forward组件喵～ 🔍
                 forward_id = getattr(msg, "id", "")
                 logger.info(f"通过类型名称检测到转发消息组件喵: type={type(msg)}, id={forward_id} 📨")
-                
+
                 # 同步版本无法获取转发内容，使用简单表示喵～ 📝
                 serialized.append({
                     "type": "plain",
@@ -407,7 +408,7 @@ async def async_serialize_message(
                 # 处理转发消息组件喵～ 📤
                 forward_id = getattr(msg, "id", "")
                 logger.info(f"检测到Forward组件喵: id={forward_id} 📨")
-                
+
                 # 尝试获取转发消息的实际内容喵～ 🔍
                 if event:
                     forward_nodes = await fetch_forward_message_nodes(forward_id, event)
@@ -430,14 +431,14 @@ async def async_serialize_message(
                     # 没有event对象时使用简单的表示喵～ ⚠️
                     logger.warning(f"缺少event对象，无法获取转发消息内容喵: {forward_id} 😿")
                     serialized.append({
-                        "type": "plain", 
+                        "type": "plain",
                         "text": f"[转发消息: {forward_id[:20]}...]"
                     })
             elif hasattr(msg, 'type') and str(getattr(msg, 'type', '')).lower() == 'forward':
                 # 处理转发消息组件喵～ 📤
                 forward_id = getattr(msg, "id", "")
                 logger.info(f"检测到转发消息组件喵: id={forward_id} 📨")
-                
+
                 # 同步版本无法获取转发内容，使用简单表示喵～ 📝
                 serialized.append({
                     "type": "plain",

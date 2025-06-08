@@ -1,7 +1,7 @@
 import asyncio
 import os
-import traceback
 import time
+import traceback
 
 from astrbot.api import logger
 
@@ -208,16 +208,16 @@ class ForwardManager:
                 # 检查消息是否包含转发组件喵～ 🔍
                 message_components = msg.get("messages", [])
                 has_forward = False
-                
+
                 for comp in message_components:
                     if isinstance(comp, dict) and comp.get("type") == "forward":
                         if "nodes" in comp and isinstance(comp["nodes"], list):
                             # 创建嵌套转发消息的节点，使用原始转发ID喵～ 📤
                             forward_id = comp.get('id', '未知ID')
                             forward_node_count = len(comp['nodes'])
-                            
+
                             logger.info(f"创建嵌套转发消息节点喵: {forward_id} (包含 {forward_node_count} 条消息) 📨")
-                            
+
                             # 构建包含嵌套转发的节点，使用原始ID而不是重构节点喵～ 🏗️
                             nested_forward_node = {
                                 "type": "node",
@@ -235,11 +235,11 @@ class ForwardManager:
                                     "time": msg.get("timestamp", int(time.time()))
                                 }
                             }
-                            
+
                             nodes_list.append(nested_forward_node)
                             has_forward = True
                             break
-                
+
                 # 如果没有转发组件，使用普通的节点构建方式喵～ 🏗️
                 if not has_forward:
                     node = await self.build_forward_node(msg)

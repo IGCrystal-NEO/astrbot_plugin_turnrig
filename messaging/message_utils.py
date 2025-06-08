@@ -1,6 +1,7 @@
 # 导入消息工具模块喵～ 📦
-from astrbot.api import logger
 import time
+
+from astrbot.api import logger
 
 
 async def fetch_forward_message_nodes(forward_id, event):
@@ -29,34 +30,34 @@ async def fetch_forward_message_nodes(forward_id, event):
     try:
         client = event.bot
         logger.info(f"尝试获取转发消息内容喵: ID={forward_id} 🔍")
-        
+
         # 方法1: 尝试使用get_forward_msg API喵～ 📤
         forward_payload = {"id": forward_id}
         try:
             forward_response = await client.api.call_action("get_forward_msg", **forward_payload)
             logger.info(f"成功通过get_forward_msg获取转发消息喵: {forward_response} ✅")
-            
+
             if not forward_response:
                 logger.warning(f"get_forward_msg返回空结果喵: {forward_response} 😿")
                 return None
-                
+
             # 检查是否有message字段喵～ 📋
             if "message" in forward_response and isinstance(forward_response["message"], list):
                 messages = forward_response["message"]
                 logger.info(f"从get_forward_msg获取到 {len(messages)} 条消息喵 📊")
-                
+
                 # 转换为节点格式喵～ 🔄
                 nodes = []
                 for i, msg in enumerate(messages):
                     if not isinstance(msg, dict):
                         logger.debug(f"跳过非字典格式的消息 {i}: {type(msg)} 📦")
                         continue
-                    
+
                     # 检查是否是node类型的消息喵～ 🎯
                     if msg.get("type") == "node" and "data" in msg:
                         # 直接使用OneBot返回的节点数据喵～ 📤
                         node_data = msg["data"]
-                        
+
                         # 构建标准化节点数据喵～ 🏗️
                         node = {
                             "type": "node",
@@ -67,7 +68,7 @@ async def fetch_forward_message_nodes(forward_id, event):
                                 "time": node_data.get("time", int(time.time()))
                             }
                         }
-                        
+
                         logger.info(f"处理节点 {i+1}: 用户={node['data']['name']}, 内容数量={len(node['data']['content'])} 📋")
                         nodes.append(node)
                     else:
@@ -81,10 +82,10 @@ async def fetch_forward_message_nodes(forward_id, event):
                                 "time": msg.get("time", int(time.time()))
                             }
                         }
-                        
+
                         # 处理消息内容喵～ 📝
                         content_processed = False
-                        
+
                         # 尝试从content字段获取消息内容喵～ 🔍
                         if "content" in msg and isinstance(msg["content"], list):
                             for content_item in msg["content"]:
@@ -100,7 +101,7 @@ async def fetch_forward_message_nodes(forward_id, event):
                                             content_processed = True
                                     elif content_type == "image":
                                         node["data"]["content"].append({
-                                            "type": "image", 
+                                            "type": "image",
                                             "data": content_item.get("data", {})
                                         })
                                         content_processed = True
@@ -108,7 +109,7 @@ async def fetch_forward_message_nodes(forward_id, event):
                                         # 保持原始格式喵～ 📦
                                         node["data"]["content"].append(content_item)
                                         content_processed = True
-                        
+
                         # 尝试从message字段获取消息内容喵～ 🔍
                         if not content_processed and "message" in msg:
                             message_content = msg["message"]
@@ -132,16 +133,16 @@ async def fetch_forward_message_nodes(forward_id, event):
                                     "data": {"text": message_content}
                                 })
                                 content_processed = True
-                        
+
                         # 如果仍然没有内容，添加默认文本喵～ 📝
                         if not content_processed:
                             node["data"]["content"].append({
                                 "type": "text",
                                 "data": {"text": "[消息内容无法解析]"}
                             })
-                        
+
                         nodes.append(node)
-                    
+
                 if nodes:
                     logger.info(f"成功转换转发消息为 {len(nodes)} 个节点喵 ✅")
                     return nodes
@@ -151,12 +152,12 @@ async def fetch_forward_message_nodes(forward_id, event):
             else:
                 logger.warning(f"get_forward_msg响应格式不正确喵: {forward_response} 😿")
                 return None
-                
+
         except Exception as api_error:
             logger.error(f"调用get_forward_msg API失败喵: {api_error} 😿")
             # API失败时直接返回None，让上层决定如何处理喵～ 📝
             return None
-                    
+
     except Exception as e:
         logger.error(f"获取转发消息节点失败喵: {e} 😿")
         return None
