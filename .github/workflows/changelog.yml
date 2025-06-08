@@ -1,0 +1,81 @@
+name: Update Changelog
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to generate changelog for'
+        required: true
+        type: string
+
+jobs:
+  update-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史记录
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Get previous version
+        id: get_previous_version
+        run: |
+          # 获取当前版本之前的最新 tag
+          VERSION="${{ github.event.inputs.version || github.event.release.tag_name }}"
+          
+          # 获取所有标签，排除当前版本，取最新的
+          PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -v "^${VERSION}$" | head -n1 || echo "")
+          
+          # 如果没有找到前一个标签，尝试获取最老的标签作为起始点
+          if [ -z "$PREVIOUS_TAG" ]; then
+            FIRST_TAG=$(git tag -l --sort=version:refname | head -n1 || echo "")
+            echo "previous_tag=$FIRST_TAG" >> $GITHUB_OUTPUT
+            echo "is_first_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+            echo "is_first_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        run: |
+          VERSION="${{ github.event.inputs.version || github.event.release.tag_name }}"
+          PREVIOUS_VERSION="${{ steps.get_previous_version.outputs.previous_tag }}"
+          IS_FIRST_RELEASE="${{ steps.get_previous_version.outputs.is_first_release }}"
+          
+          echo "Generating changelog for version: $VERSION"
+          echo "Previous version: $PREVIOUS_VERSION"
+          echo "Is first release: $IS_FIRST_RELEASE"
+          
+          if [ "$IS_FIRST_RELEASE" = "true" ] && [ -n "$PREVIOUS_VERSION" ]; then
+            # 第一次发布但有标签，从第一个标签开始
+            python scripts/generate_changelog.py "$VERSION" "$PREVIOUS_VERSION" HEAD
+          elif [ -n "$PREVIOUS_VERSION" ]; then
+            # 正常情况，从上一个版本开始
+            python scripts/generate_changelog.py "$VERSION" "$PREVIOUS_VERSION" HEAD
+          else
+            # 完全没有标签，生成所有历史
+            python scripts/generate_changelog.py "$VERSION" --all HEAD
+          fi
+
+      - name: Update metadata version
+        if: github.event.inputs.version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          # 更新 metadata.yaml 中的版本号
+          sed -i "s/version: .*/version: \"$VERSION\"/" metadata.yaml
+
+      - name: Commit and push
+        if: github.event.inputs.version
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md metadata.yaml
+          git commit -m "📃 docs: update changelog for v${{ github.event.inputs.version }}" || exit 0
+          git push

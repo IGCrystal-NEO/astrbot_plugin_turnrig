@@ -2,3 +2,6 @@
 *__pycache__
 /dev
 plugin.md
+scripts/generate_changelog.py
+scripts/update_changelog.ps1
+scripts/update_changelog.sh
