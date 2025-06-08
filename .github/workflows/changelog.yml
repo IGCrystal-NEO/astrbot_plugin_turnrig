@@ -23,6 +23,7 @@ jobs:
           fetch-depth: 0  # 获取完整历史记录
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: main  # 明确指定检出main分支，避免detached HEAD状态
+          persist-credentials: true  # 确保凭据持久化
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -109,8 +110,11 @@ jobs:
           git checkout main
           git pull origin main
           
+          # 更新 metadata.yaml 中的版本号
+          sed -i "s/version: .*/version: \"$VERSION\"/" metadata.yaml
+          
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
+          git add CHANGELOG.md metadata.yaml
           git commit -m "📃 docs: update changelog for v${CLEAN_VERSION}" || exit 0
           git push origin main
