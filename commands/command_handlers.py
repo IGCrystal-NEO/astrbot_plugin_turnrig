@@ -25,8 +25,8 @@ class CommandHandlers:
 
     def __init__(self, plugin_instance):
         """
-        初始化命令处理器喵～ 🐾
-        创建一个全新的命令处理小助手！
+        初始化命令处理器喵～ 🎮
+        负责处理各种插件命令的智能助手！
 
         Args:
             plugin_instance: TurnRigPlugin的实例，提供配置和服务喵～
@@ -35,9 +35,6 @@ class CommandHandlers:
 
         # 迁移旧格式的processed_message_ids到新格式喵～ 🔄
         self._migrate_processed_message_ids()
-
-        # 启动定期清理过期消息ID的任务喵～ 🧹
-        self.plugin.start_cleanup_task()
 
     def _migrate_processed_message_ids(self):
         """
