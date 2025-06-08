@@ -1,13 +1,16 @@
 """
-转发消息构建器模块喵～
-负责将接收到的消息转换为适合转发的格式
+转发消息构建器模块喵～ 🏗️
+负责将接收到的消息转换为适合转发的格式喵！
 主人的消息都会在这里被精心打包呢～ ฅ(^•ω•^)ฅ
 
 这个模块的主要功能：
-- 构建转发节点数据结构 🏗️
-- 处理各种类型的消息组件 📝
-- 下载和转换媒体文件 🎬
-- 保持消息的完整性喵～ ✨
+- 🏗️ 构建转发节点数据结构
+- 📝 处理各种类型的消息组件
+- 🎬 下载和转换媒体文件
+- ✨ 保持消息的完整性喵～
+
+Note:
+    所有的消息都会变得整整齐齐，然后可爱地转发出去喵！ 💫
 """
 
 import base64
@@ -28,12 +31,28 @@ except ImportError:
 
 class MessageBuilder:
     """
-    消息构建器喵～ 负责将原始消息转换为转发格式
-    让每条消息都变得可爱又整齐！ ฅ(^•ω•^)ฅ
+    消息构建器喵～ 🏗️
+    负责将原始消息转换为转发格式，让每条消息都变得可爱又整齐！ ฅ(^•ω•^)ฅ
+    
+    这个小工具会帮你：
+    - 📦 构建转发节点
+    - 🖼️ 处理图片消息
+    - 🎵 处理音频消息
+    - 📁 处理文件消息
+    - 😸 处理特殊表情
+    
+    Note:
+        所有的消息都会被精心打包，确保转发时不会丢失内容喵！ ✨
     """
 
     def __init__(self, download_helper=None, plugin=None):
-        """初始化消息构建器喵～ 🐾"""
+        """
+        初始化消息构建器喵～ 🐾
+        
+        Args:
+            download_helper: 下载助手实例，用于处理媒体文件喵
+            plugin: 插件实例，提供配置和服务喵
+        """
         if download_helper is None:
             self.download_helper = DownloadHelper()
         else:
@@ -41,48 +60,55 @@ class MessageBuilder:
         self.plugin = plugin
 
     async def build_forward_node(self, msg_data: dict) -> dict:
-        """构建单个转发节点
+        """
+        构建单个转发节点喵～ 🏗️
+        把原始消息数据转换成可以转发的漂亮格式！
 
         Args:
-            msg_data: 消息数据字典
+            msg_data: 消息数据字典喵
 
         Returns:
-            Dict: 转发节点（适合QQ API的字典格式）
+            转发节点（适合QQ API的字典格式）喵～
+            
+        Note:
+            会自动处理各种消息类型，确保格式正确喵！ ✨
         """
+        # 获取发送者信息喵～ 👤
         sender_name = msg_data.get("sender_name", "未知用户")
         sender_id = msg_data.get("sender_id", "0")
 
-        # 确保sender_id是字符串类型
+        # 确保sender_id是字符串类型喵～ 🔤
         sender_id_str = str(sender_id)
 
-        # 尝试获取用户头像URL
+        # 尝试获取用户头像URL喵～ 🖼️
         avatar_url = msg_data.get("avatar_url", "")
         if not avatar_url and sender_id != "0":
-            # 构建QQ头像URL（QQ用户头像的标准URL格式）
+            # 构建QQ头像URL（QQ用户头像的标准URL格式）喵～ 🔗
             avatar_url = f"http://q1.qlogo.cn/g?b=qq&nk={sender_id_str}&s=100"
 
         timestamp = msg_data.get("timestamp", int(time.time()))
-        # 获取原始消息序列化数据
-        serialized_message = msg_data.get("messages", [])  # 修复：使用正确的字段名
+        
+        # 获取原始消息序列化数据喵～ 📄
+        serialized_message = msg_data.get("messages", [])  # 修复：使用正确的字段名喵
         message_components = []
 
-        # 处理消息内容，提取所有类型的消息组件
+        # 处理消息内容，提取所有类型的消息组件喵～ 🔍
         for i, comp in enumerate(serialized_message):
             if isinstance(comp, dict):
                 comp_type = comp.get("type", "")
 
-                # 处理不同类型的组件
+                # 处理不同类型的组件喵～ 🎯
                 component = await self._process_component(comp_type, comp, timestamp)
                 if component:
-                    # 处理返回值是列表的情况
+                    # 处理返回值是列表的情况喵～ 📋
                     if isinstance(component, list):
                         message_components.extend(component)
                     else:
                         message_components.append(component)
             else:
-                logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)}")
+                logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)} 喵～ ❓")
 
-        # 构建转发节点
+        # 构建转发节点喵～ 🏗️
         try:
             node = {
                 "type": "node",
@@ -94,46 +120,47 @@ class MessageBuilder:
                 },
             }
 
-            # 记录组件信息（调试用）
+            # 记录组件信息（调试用）喵～ 🔍
             for comp in message_components:
                 if comp.get("type") == "image":
                     logger.debug(
-                        f"图片组件详情: {json.dumps(comp, ensure_ascii=False)}"
+                        f"图片组件详情喵: {json.dumps(comp, ensure_ascii=False)} 🖼️"
                     )
 
             return node
 
         except Exception as e:
-            logger.error(f"构建转发节点失败: {str(e)}")
+            # 构建失败了喵，返回一个安全的默认节点 😿
+            logger.error(f"构建转发节点失败喵: {str(e)}")
             return {
                 "type": "node",
                 "data": {
                     "name": sender_name,
                     "uin": sender_id_str,
-                    "content": [{"type": "text", "data": {"text": "[构建节点失败]"}}],
+                    "content": [{"type": "text", "data": {"text": "[构建节点失败喵]"}}],
                     "time": timestamp,
                 },
             }
 
-        # 如果没有内容，使用纯文本消息
+        # 如果没有内容，使用纯文本消息喵～ 📝
         if not message_components:
-            message_components = [{"type": "text", "data": {"text": "[空消息]"}}]
+            message_components = [{"type": "text", "data": {"text": "[空消息喵]"}}]
 
-        # 添加更详细的日志，帮助调试（修复这里的错误）
+        # 添加更详细的日志，帮助调试喵～ 📋
         logger.debug(
-            f"构建转发节点: {sender_name}({sender_id_str}), 共 {len(message_components)} 个组件"
+            f"构建转发节点喵: {sender_name}({sender_id_str}), 共 {len(message_components)} 个组件 🔢"
         )
         for i, comp in enumerate(
             message_components[:3]
-        ):  # 只显示前三个组件避免日志过长
+        ):  # 只显示前三个组件避免日志过长喵～ 📊
             if isinstance(comp, dict):
                 logger.debug(
-                    f"组件{i + 1}: 类型={comp.get('type')}, 数据={comp.get('data')}"
+                    f"组件{i + 1}喵: 类型={comp.get('type')}, 数据={comp.get('data')} 📋"
                 )
             else:
-                logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)}")
+                logger.debug(f"组件{i + 1}: 非字典类型，实际类型={type(comp)} 喵～ ❓")
 
-        # 直接返回适合QQ API的字典格式
+        # 直接返回适合QQ API的字典格式喵～ 📤
         node_data = {
             "type": "node",
             "data": {
@@ -143,44 +170,50 @@ class MessageBuilder:
                 "time": timestamp,
             },
         }
-        # 添加节点构建完整日志，便于调试
+        
+        # 添加节点构建完整日志，便于调试喵～ 📝
         try:
             for comp in message_components:
                 if comp.get("type") == "image":
                     logger.debug(
-                        f"图片组件详情: {json.dumps(comp, ensure_ascii=False)}"
+                        f"图片组件详情喵: {json.dumps(comp, ensure_ascii=False)} 🖼️"
                     )
             logger.debug(
-                f"完整转发节点结构: {json.dumps(node_data, ensure_ascii=False)}"
+                f"完整转发节点结构喵: {json.dumps(node_data, ensure_ascii=False)} 📋"
             )
         except Exception as e:
-            logger.debug(f"序列化节点结构失败: {e}")
+            logger.debug(f"序列化节点结构失败喵: {e} 😿")
 
         return node_data
 
     async def _process_component(
         self, comp_type: str, comp: dict, timestamp: int
     ) -> dict:
-        """处理单个消息组件
+        """
+        处理单个消息组件喵～ 🔧
+        根据组件类型选择合适的处理方法！
 
         Args:
-            comp_type: 组件类型
-            comp: 组件数据
-            timestamp: 时间戳
+            comp_type: 组件类型喵
+            comp: 组件数据喵
+            timestamp: 时间戳喵
 
         Returns:
-            Dict: 处理后的组件数据
+            处理后的组件数据喵～
+            
+        Note:
+            支持各种消息类型，确保每个组件都能正确处理喵！ ✨
         """
-        # 文本消息
+        # 文本消息喵～ 📝
         if comp_type == "plain":
             return {"type": "text", "data": {"text": comp.get("text", "")}}
 
-        # 图片消息
+        # 图片消息喵～ 🖼️
         elif comp_type == "image":
             return await self._process_image_component(comp)
 
-        # 特殊表情/商店表情
-        elif comp_type == "mface":  # 添加对商店表情/特殊表情包的支持
+        # 特殊表情/商店表情喵～ 😸
+        elif comp_type == "mface":  # 添加对商店表情/特殊表情包的支持喵
             mface_url = comp.get("url", "")
             if not mface_url:
                 mface_url = comp.get("data", {}).get("url", "")
@@ -190,15 +223,15 @@ class MessageBuilder:
             )
 
             if mface_url:
-                # 如果有URL，尝试转换为图片组件
+                # 如果有URL，尝试转换为图片组件喵～ 🔄
                 image_data = {"type": "image", "data": {"file": mface_url}}
-                # 添加特殊标记
+                # 添加特殊标记喵～ 🏷️
                 image_data["data"]["mface"] = True
                 image_data["data"]["summary"] = summary
-                logger.info(f"处理特殊表情: {summary} -> {mface_url}")
+                logger.info(f"处理特殊表情喵: {summary} -> {mface_url} 😸")
                 return image_data
-            else:  # 退化为文本处理
-                return {"type": "text", "data": {"text": f"{summary}"}}  # @消息
+            else:  # 退化为文本处理喵～ 📝
+                return {"type": "text", "data": {"text": f"[表情: {summary}]"}}
         elif comp_type == "at":
             # 获取@的用户名和QQ号
             at_name = comp.get("name", "")
