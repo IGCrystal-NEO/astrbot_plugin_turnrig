@@ -105,8 +105,12 @@ jobs:
           # 移除版本号开头的 v 前缀（如果有的话）
           CLEAN_VERSION=${VERSION#v}
           
+          # 确保我们在main分支上
+          git checkout main
+          git pull origin main
+          
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add CHANGELOG.md
           git commit -m "📃 docs: update changelog for v${CLEAN_VERSION}" || exit 0
-          git push origin HEAD:main
+          git push origin main
