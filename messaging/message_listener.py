@@ -14,14 +14,14 @@ class MessageListener:
     """
     消息监听器喵～ 👂
     专门负责监听和处理各种消息的可爱小助手！ ฅ(^•ω•^)ฅ
-    
+
     这个小监听器会帮你：
     - 👂 监听所有消息事件
     - 🔍 检测消息内容和特殊格式
     - 💾 缓存符合条件的消息
     - 📤 触发消息转发操作
     - 🎯 智能过滤和匹配规则
-    
+
     Note:
         所有的消息都会经过这里进行精心筛选喵！ ✨
     """
@@ -29,7 +29,7 @@ class MessageListener:
     def __init__(self, plugin):
         """
         初始化消息监听器喵～ 🐾
-        
+
         Args:
             plugin: 插件实例，提供配置和服务喵～
         """
@@ -40,13 +40,13 @@ class MessageListener:
     def _extract_onebot_fields(self, event: AstrMessageEvent) -> dict:
         """
         从 aiocqhttp_platform_adapter 的原始事件中提取 OneBot V11 协议字段喵～ 🔍
-        
+
         Args:
             event: 消息事件对象喵
-            
+
         Returns:
             包含 message_type, sub_type 等原始字段的字典喵～
-            
+
         Note:
             用于获取更准确的消息类型信息喵！ 📋
         """
@@ -57,7 +57,9 @@ class MessageListener:
         }
 
         try:
-            logger.debug(f"开始提取 OneBot 字段，平台: {event.get_platform_name()} 喵～ 🔍")
+            logger.debug(
+                f"开始提取 OneBot 字段，平台: {event.get_platform_name()} 喵～ 🔍"
+            )
 
             # 检查 message_obj 是否有 raw_message 属性喵～ 📋
             if not hasattr(event.message_obj, "raw_message"):
@@ -77,28 +79,38 @@ class MessageListener:
 
                 # 方法1: 直接从 OneBot Event 对象访问字段喵～ 📋
                 if hasattr(raw_event, "message_type"):
-                    onebot_fields["message_type"] = getattr(raw_event, "message_type", None)
+                    onebot_fields["message_type"] = getattr(
+                        raw_event, "message_type", None
+                    )
                     onebot_fields["sub_type"] = getattr(raw_event, "sub_type", "normal")
-                    logger.info(f"✅ 从 OneBot Event 对象提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 🎉")
+                    logger.info(
+                        f"✅ 从 OneBot Event 对象提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 🎉"
+                    )
 
                 # 方法2: 如果是字典格式（某些适配器可能传递字典）喵～ 📚
                 elif isinstance(raw_event, dict):
                     onebot_fields["message_type"] = raw_event.get("message_type", None)
                     onebot_fields["sub_type"] = raw_event.get("sub_type", "normal")
-                    logger.info(f"✅ 从字典格式提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 📖")
+                    logger.info(
+                        f"✅ 从字典格式提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 📖"
+                    )
 
                 # 方法3: 通过索引访问（OneBot Event 也支持字典式访问）喵～ 🔑
                 elif hasattr(raw_event, "__getitem__"):
                     try:
                         onebot_fields["message_type"] = raw_event["message_type"]
                         onebot_fields["sub_type"] = raw_event.get("sub_type", "normal")
-                        logger.info(f"✅ 通过索引访问提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 🗝️")
+                        logger.info(
+                            f"✅ 通过索引访问提取字段成功喵: message_type={onebot_fields['message_type']}, sub_type={onebot_fields['sub_type']} 🗝️"
+                        )
                     except (KeyError, TypeError) as e:
                         logger.debug(f"通过索引访问失败喵: {e}，继续尝试其他方法 🔄")
 
                 # 方法4: 详细检查原始事件的结构喵～ 🔬
                 if onebot_fields["message_type"] is None:
-                    logger.warning("所有常规方法都未能提取到 OneBot 字段，进行详细分析喵 🔍")
+                    logger.warning(
+                        "所有常规方法都未能提取到 OneBot 字段，进行详细分析喵 🔍"
+                    )
                     logger.debug(f"raw_event 可用属性喵: {dir(raw_event)} 📋")
                     if hasattr(raw_event, "__dict__"):
                         logger.debug(f"raw_event.__dict__ 喵: {raw_event.__dict__} 📝")
@@ -120,7 +132,9 @@ class MessageListener:
                     onebot_fields["message_type"] = "private"
                 else:
                     onebot_fields["message_type"] = "unknown"
-                logger.warning(f"⚠️ 从 AstrBot MessageType 推断喵: {onebot_fields['message_type']} 🎯")
+                logger.warning(
+                    f"⚠️ 从 AstrBot MessageType 推断喵: {onebot_fields['message_type']} 🎯"
+                )
 
             # 确保 sub_type 有默认值喵～ 📋
             if onebot_fields["sub_type"] is None:
@@ -145,10 +159,10 @@ class MessageListener:
         """
         监听所有消息并进行处理喵～ 👂
         这是消息处理的核心方法，会对每条消息进行详细分析！
-        
+
         Args:
             event: 消息事件对象喵
-            
+
         Note:
             会自动过滤重复消息和插件指令喵～ 🔍
         """

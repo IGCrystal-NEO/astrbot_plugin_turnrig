@@ -28,13 +28,13 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
     """
     将消息组件列表序列化为可存储的格式喵～ 📦
     （同步版本，有文件下载警告）
-    
+
     Args:
         message: 消息组件列表喵
 
     Returns:
         可存储的序列化消息喵～
-        
+
     Warning:
         此函数可能导致"不可以在异步上下文中同步等待下载"警告喵！ ⚠️
         建议使用 async_serialize_message 异步版本喵～
@@ -216,7 +216,7 @@ async def async_serialize_message(
 
     Returns:
         可存储的序列化消息喵～
-        
+
     Note:
         这是推荐使用的异步版本，避免同步获取文件的警告喵！ 💡
     """
@@ -469,7 +469,9 @@ def deserialize_message(serialized: list[dict]) -> list[Comp.BaseMessageComponen
         except Exception as e:
             logger.error(f"反序列化消息组件失败喵: {e}, 消息数据喵: {msg}")
             components.append(
-                Comp.Plain(text=f"[消息组件解析错误喵: {msg.get('type', '未知类型喵')}]")
+                Comp.Plain(
+                    text=f"[消息组件解析错误喵: {msg.get('type', '未知类型喵')}]"
+                )
             )
     return components
 

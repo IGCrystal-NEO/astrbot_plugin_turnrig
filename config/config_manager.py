@@ -6,26 +6,30 @@ from astrbot.api import logger
 
 class ConfigManager:
     """
-    配置管理器喵～ 
+    配置管理器喵～
     负责管理插件配置和消息缓存的可爱小助手！ ฅ(^•ω•^ฅ
     """
-    
+
     def __init__(self, data_dir):
         """
         初始化配置管理器喵！
-        
+
         Args:
             data_dir: 数据存储目录喵～
         """
         self.data_dir = data_dir  # 数据存储的小窝喵～ 🏠
-        self.config_path = os.path.join(self.data_dir, "config.json")  # 配置文件的路径喵 📄
-        self.cache_path = os.path.join(self.data_dir, "message_cache.json")  # 缓存文件路径喵 💾
+        self.config_path = os.path.join(
+            self.data_dir, "config.json"
+        )  # 配置文件的路径喵 📄
+        self.cache_path = os.path.join(
+            self.data_dir, "message_cache.json"
+        )  # 缓存文件路径喵 💾
 
     def load_config(self):
         """
         从文件加载配置喵～
         把保存的配置文件读取出来！ ✨
-        
+
         Returns:
             加载的配置字典，如果失败则返回None喵
         """
@@ -44,10 +48,10 @@ class ConfigManager:
         """
         保存配置到文件喵～
         把配置安全地保存起来！ 💾
-        
+
         Args:
             config: 要保存的配置字典喵
-            
+
         Returns:
             保存成功返回True，失败返回False喵
         """
@@ -56,6 +60,7 @@ class ConfigManager:
             if os.path.exists(self.config_path):
                 backup_path = f"{self.config_path}.bak"
                 import shutil
+
                 shutil.copy2(self.config_path, backup_path)
 
             # 保存新配置喵！ ✨
@@ -73,7 +78,7 @@ class ConfigManager:
         """
         加载缓存的消息喵～
         把之前存储的消息缓存都读取出来！ 📮
-        
+
         Returns:
             消息缓存字典喵～
         """
@@ -94,7 +99,9 @@ class ConfigManager:
 
                     return cache_data
             else:
-                logger.debug(f"消息缓存文件不存在，将在需要时创建喵: {self.cache_path} 📝")
+                logger.debug(
+                    f"消息缓存文件不存在，将在需要时创建喵: {self.cache_path} 📝"
+                )
                 return {}
         except Exception as e:
             # 加载缓存失败了喵 😿
@@ -105,10 +112,10 @@ class ConfigManager:
         """
         保存消息缓存喵～
         把最新的消息缓存安全地存储起来！ 💾
-        
+
         Args:
             message_cache: 要保存的消息缓存字典喵
-            
+
         Returns:
             保存成功返回True，失败返回False喵
         """

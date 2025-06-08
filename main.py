@@ -25,14 +25,14 @@ class TurnRigPlugin(Star):
     """
     TurnRig消息转发插件喵～ 🚀
     这是一个超级可爱的消息转发小助手！ ฅ(^•ω•^ฅ
-    
+
     功能特色：
     - 📨 智能消息监听和转发
     - 🎯 多任务管理系统
     - 💾 持久化配置和缓存
     - 🔄 自动重试机制
     - ✨ 支持各种媒体类型
-    
+
     Note:
         所有的消息都会被精心处理，确保完整转发喵！ 💫
     """
@@ -41,7 +41,7 @@ class TurnRigPlugin(Star):
         """
         初始化转发插件喵～ 🐾
         创建一个全新的消息转发小助手！
-        
+
         Args:
             context: AstrBot上下文对象喵
             config: 配置数据（可选）喵
@@ -124,7 +124,9 @@ class TurnRigPlugin(Star):
 
         # 保存一次配置确保文件存在喵～ 💾
         self.save_config_file()
-        logger.info(f"转发侦听器插件初始化完成，数据存储在 {self.data_dir} 目录下喵～ ✅")
+        logger.info(
+            f"转发侦听器插件初始化完成，数据存储在 {self.data_dir} 目录下喵～ ✅"
+        )
         logger.info(f"已加载 {len(self.config.get('tasks', []))} 个转发任务喵～ 📊")
 
         # 打印所有任务的详细信息，便于调试喵～ 🔍
@@ -134,7 +136,9 @@ class TurnRigPlugin(Star):
             )
             logger.info(f"  监听群组: {task.get('monitor_groups', [])} 喵～ 👥")
             logger.info(f"  监听私聊: {task.get('monitor_private_users', [])} 喵～ 💬")
-            logger.info(f"  群内特定用户: {task.get('monitored_users_in_groups', {})} 喵～ 👤")
+            logger.info(
+                f"  群内特定用户: {task.get('monitored_users_in_groups', {})} 喵～ 👤"
+            )
             logger.info(f"  转发目标: {task.get('target_sessions', [])} 喵～ 🎯")
 
         # 创建模块实例喵～ 🏗️
@@ -159,7 +163,7 @@ class TurnRigPlugin(Star):
         """
         清理缓存中不存在的任务喵～ 🧹
         把那些已经被删除的任务从缓存中移除！
-        
+
         Note:
             这样可以保持缓存的整洁，避免占用多余空间喵～ ✨
         """
@@ -191,7 +195,7 @@ class TurnRigPlugin(Star):
         """
         保存消息缓存喵～ 💾
         把缓存的消息都安全地保存到文件里！
-        
+
         Note:
             会显示详细的缓存统计信息喵～ 📊
         """
@@ -222,7 +226,7 @@ class TurnRigPlugin(Star):
         """
         定期保存数据喵～ ⏰
         每5分钟自动保存一次，确保数据不丢失！
-        
+
         Note:
             这是一个后台任务，会一直运行喵～ 🔄
         """
@@ -236,7 +240,7 @@ class TurnRigPlugin(Star):
         """
         定期检查消息监听状态喵～ 🔍
         监控长时间未活跃的会话，但不主动获取历史消息！
-        
+
         Note:
             这个任务会帮助清理过期的会话状态喵～ 🧹
         """
@@ -265,12 +269,12 @@ class TurnRigPlugin(Star):
         """
         获取最新消息喵～ 📥
         （暂时保留但不实现，避免过度请求API）
-        
+
         Args:
             platform: 平台对象喵
             msg_type: 消息类型喵
             chat_id: 聊天ID喵
-            
+
         Note:
             为了避免频繁API调用，这个功能暂时不实现喵～ ⚠️
         """
@@ -280,7 +284,7 @@ class TurnRigPlugin(Star):
         """
         处理获取到的消息喵～ 🔄
         （暂时保留但不实现）
-        
+
         Args:
             task_id: 任务ID喵
             session_id: 会话ID喵
@@ -292,10 +296,10 @@ class TurnRigPlugin(Star):
         """
         根据ID获取任务喵～ 🔍
         找到指定ID的任务配置！
-        
+
         Args:
             task_id: 任务ID喵
-            
+
         Returns:
             找到的任务字典，如果不存在则返回None喵
         """
@@ -308,20 +312,22 @@ class TurnRigPlugin(Star):
         """
         获取所有启用的任务喵～ ✅
         返回当前启用状态的所有任务！
-        
+
         Returns:
             已启用的任务列表喵～
         """
-        return [task for task in self.config.get("tasks", []) if task.get("enabled", True)]
+        return [
+            task for task in self.config.get("tasks", []) if task.get("enabled", True)
+        ]
 
     def get_max_task_id(self):
         """
         获取最大的任务ID喵～ 🔢
         用于自动生成新的任务ID！
-        
+
         Returns:
             当前最大的任务ID（整数）喵
-            
+
         Note:
             如果没有任务，返回0喵～ 🆕
         """
@@ -340,7 +346,7 @@ class TurnRigPlugin(Star):
         """
         启动消息ID清理任务喵～ 🧹
         定期清理过期的消息ID记录！
-        
+
         Note:
             避免重复启动任务喵～ ⚠️
         """
@@ -351,7 +357,7 @@ class TurnRigPlugin(Star):
         """
         定期清理过期的消息ID记录喵～ ⏰
         每小时自动清理一次过期记录！
-        
+
         Note:
             这是一个后台任务，会一直运行喵～ 🔄
         """
@@ -368,13 +374,13 @@ class TurnRigPlugin(Star):
         """
         清理指定天数前的消息ID记录喵～ 🧹
         删除过期的消息处理记录，释放内存！
-        
+
         Args:
             days: 保留天数，默认7天喵
-            
+
         Returns:
             清理的记录数量喵
-            
+
         Note:
             只清理真正过期的记录，保证功能正常喵～ ✨
         """
@@ -415,7 +421,7 @@ class TurnRigPlugin(Star):
         """
         定期清理临时文件喵～ 📁
         每小时清理一次超过2小时的临时文件！
-        
+
         Note:
             只清理真正过期的文件，避免影响正在使用的文件喵～ ⚠️
         """
@@ -451,7 +457,7 @@ class TurnRigPlugin(Star):
         """
         插件终止时的清理操作喵～ 🔚
         确保所有数据都被安全保存！
-        
+
         Note:
             这是插件关闭前的最后一次保存机会喵～ 💾
         """
@@ -481,10 +487,10 @@ class TurnRigPlugin(Star):
         """
         监听所有消息的入口喵～ 👂
         这里是消息处理的第一站！
-        
+
         Args:
             event: 消息事件对象喵
-            
+
         Note:
             会过滤掉插件自己的指令消息喵～ 🔍
         """
@@ -506,7 +512,9 @@ class TurnRigPlugin(Star):
 
                 # 检查是否为机器人的回复消息（避免循环）喵～ 🤖
                 sender_id = event.get_sender_id()
-                if sender_id == str(self.context.get_platform("aiocqhttp").get_client().self_id):
+                if sender_id == str(
+                    self.context.get_platform("aiocqhttp").get_client().self_id
+                ):
                     logger.debug("跳过机器人自己的消息喵～ 🤖")
                     return
 
@@ -516,6 +524,7 @@ class TurnRigPlugin(Star):
         except Exception as e:
             logger.error(f"处理消息时出错喵: {e} 😿")
             import traceback
+
             logger.error(traceback.format_exc())
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -524,10 +533,10 @@ class TurnRigPlugin(Star):
         """
         监听群组通知消息喵～ 📢
         处理群文件上传等特殊事件！
-        
+
         Args:
             event: 通知事件对象喵
-            
+
         Note:
             主要处理群文件上传通知喵～ 📁
         """
@@ -537,7 +546,9 @@ class TurnRigPlugin(Star):
                 logger.info("检测到群文件上传通知，委托给监听器处理喵～ 📂")
                 await self.message_listener.on_group_upload_notice(event)
             else:
-                logger.debug(f"忽略其他类型的通知消息喵: {getattr(event, 'notice_type', 'unknown')} ⏭️")
+                logger.debug(
+                    f"忽略其他类型的通知消息喵: {getattr(event, 'notice_type', 'unknown')} ⏭️"
+                )
 
         except Exception as e:
             logger.error(f"处理群组通知失败喵: {e} 😿")
@@ -550,7 +561,9 @@ class TurnRigPlugin(Star):
         TurnRig命令组的入口喵～ 🚪
         处理所有以 /turnrig 开头的命令！
         """
-        return MessageEventResult().message("请指定具体的子命令喵～ 使用 /turnrig help 查看帮助 📖")
+        return MessageEventResult().message(
+            "请指定具体的子命令喵～ 使用 /turnrig help 查看帮助 📖"
+        )
 
     @turnrig.command("list")
     async def list_tasks(self, event: AstrMessageEvent):
@@ -593,7 +606,9 @@ class TurnRigPlugin(Star):
         # 委托给命令处理器，传递所有参数喵～ 🔄
         cmd_text = event.message_str
         parts = cmd_text.split() if cmd_text else []
-        return await self.command_handlers.handle_add_monitor(event, task_id, session_id, *parts[3:])
+        return await self.command_handlers.handle_add_monitor(
+            event, task_id, session_id, *parts[3:]
+        )
 
     @turnrig.command("unmonitor")
     async def remove_monitor(
@@ -605,7 +620,9 @@ class TurnRigPlugin(Star):
         """
         cmd_text = event.message_str
         parts = cmd_text.split() if cmd_text else []
-        return await self.command_handlers.handle_remove_monitor(event, task_id, session_id, *parts[3:])
+        return await self.command_handlers.handle_remove_monitor(
+            event, task_id, session_id, *parts[3:]
+        )
 
     @turnrig.command("target")
     async def add_target(
@@ -617,7 +634,9 @@ class TurnRigPlugin(Star):
         """
         cmd_text = event.message_str
         parts = cmd_text.split() if cmd_text else []
-        return await self.command_handlers.handle_add_target(event, task_id, target_session, *parts[3:])
+        return await self.command_handlers.handle_add_target(
+            event, task_id, target_session, *parts[3:]
+        )
 
     @turnrig.command("untarget")
     async def remove_target(
@@ -629,14 +648,18 @@ class TurnRigPlugin(Star):
         """
         cmd_text = event.message_str
         parts = cmd_text.split() if cmd_text else []
-        return await self.command_handlers.handle_remove_target(event, task_id, target_session, *parts[3:])
+        return await self.command_handlers.handle_remove_target(
+            event, task_id, target_session, *parts[3:]
+        )
 
     @turnrig.command("threshold")
     async def set_threshold(
         self, event: AstrMessageEvent, task_id: str = None, threshold: int = None
     ):
         """设置消息阈值喵～ 🔢"""
-        return await self.command_handlers.handle_set_threshold(event, task_id, threshold)
+        return await self.command_handlers.handle_set_threshold(
+            event, task_id, threshold
+        )
 
     @turnrig.command("rename")
     async def rename_task(
@@ -655,7 +678,9 @@ class TurnRigPlugin(Star):
         """
         cmd_text = event.message_str
         parts = cmd_text.split() if cmd_text else []
-        return await self.command_handlers.handle_manual_forward(event, task_id, session_id, *parts[3:])
+        return await self.command_handlers.handle_manual_forward(
+            event, task_id, session_id, *parts[3:]
+        )
 
     @turnrig.command("cleanup")
     async def cleanup_ids(self, event: AstrMessageEvent, days: int = 7):
@@ -707,7 +732,9 @@ class TurnRigPlugin(Star):
         简化命令组入口喵～ 🚪
         处理所有以 /tr 开头的命令！
         """
-        return MessageEventResult().message("请指定具体的子命令喵～ 使用 /tr help 查看帮助 📖")
+        return MessageEventResult().message(
+            "请指定具体的子命令喵～ 使用 /tr help 查看帮助 📖"
+        )
 
     @tr.command("add")
     async def tr_add_monitor(self, event: AstrMessageEvent, task_id: str = None):
@@ -739,14 +766,18 @@ class TurnRigPlugin(Star):
         self, event: AstrMessageEvent, task_id: str = None, user_id: str = None
     ):
         """快速添加群内用户监听喵～ 👤"""
-        return await self.command_handlers.handle_tr_add_user_in_group(event, task_id, user_id)
+        return await self.command_handlers.handle_tr_add_user_in_group(
+            event, task_id, user_id
+        )
 
     @tr.command("removeuser")
     async def tr_remove_user_from_group(
         self, event: AstrMessageEvent, task_id: str = None, user_id: str = None
     ):
         """快速移除群内用户监听喵～ 👋"""
-        return await self.command_handlers.handle_tr_remove_user_from_group(event, task_id, user_id)
+        return await self.command_handlers.handle_tr_remove_user_from_group(
+            event, task_id, user_id
+        )
 
     @tr.command("help")
     async def tr_help(self, event: AstrMessageEvent):

@@ -7,13 +7,13 @@ def normalize_session_id(session_id):
     """
     标准化会话ID格式喵～
     把各种形式的会话ID都转换成统一可爱的格式！ ฅ(^•ω•^ฅ
-    
+
     Args:
         session_id: 需要标准化的会话ID喵
-        
+
     Returns:
         标准化后的会话ID喵～
-        
+
     Note:
         支持多种输入格式，让用户更方便使用喵！ ✨
     """
@@ -74,5 +74,7 @@ def normalize_session_id(session_id):
         )
 
     # 无法识别的格式，给出友好提示喵～ 😿
-    logger.warning(f"无法识别会话ID格式: {session_id} 喵，请使用完整的会话ID格式喵～ 🆘")
+    logger.warning(
+        f"无法识别会话ID格式: {session_id} 喵，请使用完整的会话ID格式喵～ 🆘"
+    )
     return session_id

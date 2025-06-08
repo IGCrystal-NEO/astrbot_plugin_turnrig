@@ -24,7 +24,7 @@ class ChangelogGenerator:
     """
     Changelog 生成器喵～ 📋
     智能分析Git提交历史并生成规范的变更日志！
-    
+
     Features:
         - 🏷️ 自动分类提交类型
         - 📝 生成标准格式输出
@@ -58,20 +58,20 @@ class ChangelogGenerator:
         创建所有必要的分类容器！
         """
         self.changes: dict[str, list[str]] = {
-            "Added": [],        # 新增功能喵～ ✨
-            "Changed": [],      # 修改变更喵～ 🔄
-            "Deprecated": [],   # 废弃功能喵～ ⚠️
-            "Removed": [],      # 移除功能喵～ 🗑️
-            "Fixed": [],        # 修复错误喵～ 🐞
-            "Security": [],     # 安全修复喵～ 🔒
-            "Run": [],          # CI相关喵～ 🤖
+            "Added": [],  # 新增功能喵～ ✨
+            "Changed": [],  # 修改变更喵～ 🔄
+            "Deprecated": [],  # 废弃功能喵～ ⚠️
+            "Removed": [],  # 移除功能喵～ 🗑️
+            "Fixed": [],  # 修复错误喵～ 🐞
+            "Security": [],  # 安全修复喵～ 🔒
+            "Run": [],  # CI相关喵～ 🤖
         }
 
     def get_latest_tag(self) -> str:
         """
         获取最新的 Git 标签喵～ 🏷️
         用于确定changelog的起始点！
-        
+
         Returns:
             str | None: 最新标签名，没有时返回None喵～
         """
@@ -94,11 +94,11 @@ class ChangelogGenerator:
         """
         获取 Git 提交记录喵～ 📚
         智能处理各种情况，确保获取正确的提交范围！
-        
+
         Args:
             from_tag: 起始标签，None时自动检测喵
             to_tag: 结束标签，默认HEAD喵
-            
+
         Returns:
             list[str]: 提交记录列表喵～
         """
@@ -179,10 +179,10 @@ class ChangelogGenerator:
         """
         解析提交信息喵～ 🔍
         智能识别各种提交格式，提取类型和描述！
-        
+
         Args:
             commit_line: Git提交行喵
-            
+
         Returns:
             tuple: (commit_hash, commit_type, description) 喵～
         """
@@ -222,7 +222,7 @@ class ChangelogGenerator:
         """
         将提交分类到相应的 changelog 分类喵～ 🗂️
         智能匹配提交类型并避免重复！
-        
+
         Args:
             commit_type: 提交类型喵
             description: 提交描述喵
@@ -249,11 +249,11 @@ class ChangelogGenerator:
         """
         生成 changelog 部分喵～ 📝
         创建标准格式的变更日志条目！
-        
+
         Args:
             version: 版本号喵
             date: 发布日期，None时使用当前日期喵
-            
+
         Returns:
             str: 格式化的changelog条目喵～
         """
@@ -291,7 +291,7 @@ class ChangelogGenerator:
         """
         处理提交记录喵～ ⚙️
         遍历所有提交并分类到相应的changelog类别！
-        
+
         Args:
             from_tag: 起始标签喵
             to_tag: 结束标签喵
@@ -311,12 +311,12 @@ class ChangelogGenerator:
         """
         生成 changelog 喵～ 🎯
         完整的changelog生成流程，一站式服务！
-        
+
         Args:
             version: 版本号喵
             from_tag: 起始标签喵
             to_tag: 结束标签喵
-            
+
         Returns:
             str: 完整的changelog条目喵～
         """
@@ -329,12 +329,12 @@ class ChangelogGenerator:
         """
         将生成的 changelog 更新到 CHANGELOG.md 文件中喵～ 📝
         智能处理文件结构，支持版本冲突检测！
-        
+
         Args:
             version: 版本号喵
             changelog_section: changelog内容喵
             file_path: 目标文件路径喵
-            
+
         Returns:
             bool: 更新成功返回True，否则返回False喵～
         """
@@ -409,11 +409,11 @@ class ChangelogGenerator:
         """
         更新 metadata.yaml 中的版本号喵～ 🏷️
         智能匹配各种版本格式，确保更新准确！
-        
+
         Args:
             version: 新版本号喵
             file_path: metadata文件路径喵
-            
+
         Returns:
             bool: 更新成功返回True，否则返回False喵～
         """
@@ -467,12 +467,18 @@ def main():
         print(
             "  python generate_changelog.py 1.3.0                    # 自动检测最新标签喵～"
         )
-        print("  python generate_changelog.py 1.3.0 v1.2.0 HEAD       # 指定版本范围喵～")
+        print(
+            "  python generate_changelog.py 1.3.0 v1.2.0 HEAD       # 指定版本范围喵～"
+        )
         print(
             "  python generate_changelog.py 1.3.0 --all v1.0.0      # 为初始版本生成（从项目开始到指定标签）喵～"
         )
-        print("  python generate_changelog.py 1.3.0 --preview          # 只预览不写入喵～")
-        print("  python generate_changelog.py 1.3.0 v1.2.0 HEAD -p    # 指定范围并预览喵～")
+        print(
+            "  python generate_changelog.py 1.3.0 --preview          # 只预览不写入喵～"
+        )
+        print(
+            "  python generate_changelog.py 1.3.0 v1.2.0 HEAD -p    # 指定范围并预览喵～"
+        )
         print("\n⚠️  重要提示:")
         print("  - 如果版本内容重复，请手动指定 from_tag 参数喵～")
         print("  - 对于初始版本，使用 --all 参数喵～")
