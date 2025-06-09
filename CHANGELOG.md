@@ -67,3 +67,17 @@
 - 修复错误
 - 修复清理过期消息ID时出错
 
+
+
+## [v1.3.0] - 2025-06-09
+
+### Changed
+- pull request #24 from IGCrystal/main
+- pull request #5 from IGCrystal/perf-1
+- pull request #23 from IGCrystal/perf-1
+- update changelog for v1.2.0
+
+### Fixed
+- 修复了群聊中监听用户的问题
+- meta的上游链接修改
+
