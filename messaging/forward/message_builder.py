@@ -246,14 +246,16 @@ class MessageBuilder:
 
         # 回复消息
         elif comp_type == "reply":
+            # 从序列化数据中正确提取引用消息信息喵～ 📨
+            reply_data = comp.get("data", {})
             return {
                 "type": "reply",
                 "data": {
-                    "id": comp.get("id", ""),
-                    "text": comp.get("text", ""),
-                    "qq": comp.get("sender_id", ""),
-                    "time": comp.get("time", timestamp),
-                    "sender": {"nickname": comp.get("sender_nickname", "未知用户")},
+                    "id": reply_data.get("id", ""),
+                    "text": reply_data.get("text", ""),
+                    "qq": reply_data.get("sender_id", ""),
+                    "time": reply_data.get("time", timestamp),
+                    "sender": {"nickname": reply_data.get("sender_nickname", "未知用户")},
                 },
             }
 

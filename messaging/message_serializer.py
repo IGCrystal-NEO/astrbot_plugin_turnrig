@@ -149,21 +149,49 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                             file_data[key] = val
                 serialized.append(file_data)
             elif isinstance(msg, Comp.Reply):
-                if hasattr(msg, "content") and msg.content:
-                    node_content = [{"type": "plain", "text": msg.content}]
-                else:
-                    node_content = []
+                try:
+                    if hasattr(msg, "content") and msg.content:
+                        node_content = [{"type": "plain", "text": str(msg.content)}]
+                    else:
+                        node_content = []
 
-                serialized.append(
-                    {
-                        "type": "reply",
-                        "data": {
-                            "id": getattr(msg, "id", ""),
-                            "seq": getattr(msg, "seq", 0),
-                            "content": node_content,
-                        },
-                    }
-                )
+                    # 安全地获取引用消息属性，优先从 raw_data 获取喵～ 🛡️
+                    reply_id = getattr(msg, "id", "") or ""
+                    reply_seq = getattr(msg, "seq", 0) or 0
+                    sender_id = getattr(msg, "sender_id", "") or ""
+                    sender_nickname = getattr(msg, "sender_nickname", "") or "未知用户"
+
+                    # 如果基本属性为空，尝试从 raw_data 中获取喵～ 🔍
+                    if (not reply_id or not sender_id) and hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                        raw_data = msg.raw_data.get("data", {})
+                        if not reply_id:
+                            reply_id = raw_data.get("id", "") or ""
+                        if not sender_id:
+                            sender_id = raw_data.get("qq", "") or ""
+                        # 还可以尝试获取其他字段
+                        if sender_nickname == "未知用户":
+                            sender_nickname = raw_data.get("nickname", "") or "未知用户"
+
+                    serialized.append(
+                        {
+                            "type": "reply",
+                            "data": {
+                                "id": str(reply_id),
+                                "seq": int(reply_seq) if str(reply_seq).isdigit() else 0,
+                                "content": node_content,
+                                "sender_id": str(sender_id),
+                                "sender_nickname": sender_nickname,
+                            },
+                        }
+                    )
+                    logger.debug(f"序列化引用消息喵: id={reply_id}, sender={sender_nickname}({sender_id}) 📨")
+                except Exception as e:
+                    logger.warning(f"序列化引用消息失败，使用简化格式喵: {e} ⚠️")
+                    # 使用简化的引用消息格式喵～ 📝
+                    serialized.append({
+                        "type": "plain",
+                        "text": "[引用消息 - 内容获取失败]"
+                    })
             elif isinstance(msg, Comp.Node):
                 node_data = {
                     "name": getattr(msg, "name", ""),
@@ -372,21 +400,49 @@ async def async_serialize_message(
 
                 serialized.append(file_data)
             elif isinstance(msg, Comp.Reply):
-                if hasattr(msg, "content") and msg.content:
-                    node_content = [{"type": "plain", "text": msg.content}]
-                else:
-                    node_content = []
+                try:
+                    if hasattr(msg, "content") and msg.content:
+                        node_content = [{"type": "plain", "text": str(msg.content)}]
+                    else:
+                        node_content = []
 
-                serialized.append(
-                    {
-                        "type": "reply",
-                        "data": {
-                            "id": getattr(msg, "id", ""),
-                            "seq": getattr(msg, "seq", 0),
-                            "content": node_content,
-                        },
-                    }
-                )
+                    # 安全地获取引用消息属性，优先从 raw_data 获取喵～ 🛡️
+                    reply_id = getattr(msg, "id", "") or ""
+                    reply_seq = getattr(msg, "seq", 0) or 0
+                    sender_id = getattr(msg, "sender_id", "") or ""
+                    sender_nickname = getattr(msg, "sender_nickname", "") or "未知用户"
+
+                    # 如果基本属性为空，尝试从 raw_data 中获取喵～ 🔍
+                    if (not reply_id or not sender_id) and hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                        raw_data = msg.raw_data.get("data", {})
+                        if not reply_id:
+                            reply_id = raw_data.get("id", "") or ""
+                        if not sender_id:
+                            sender_id = raw_data.get("qq", "") or ""
+                        # 还可以尝试获取其他字段
+                        if sender_nickname == "未知用户":
+                            sender_nickname = raw_data.get("nickname", "") or "未知用户"
+
+                    serialized.append(
+                        {
+                            "type": "reply",
+                            "data": {
+                                "id": str(reply_id),
+                                "seq": int(reply_seq) if str(reply_seq).isdigit() else 0,
+                                "content": node_content,
+                                "sender_id": str(sender_id),
+                                "sender_nickname": sender_nickname,
+                            },
+                        }
+                    )
+                    logger.debug(f"异步序列化引用消息喵: id={reply_id}, sender={sender_nickname}({sender_id}) 📨")
+                except Exception as e:
+                    logger.warning(f"异步序列化引用消息失败，使用简化格式喵: {e} ⚠️")
+                    # 使用简化的引用消息格式喵～ 📝
+                    serialized.append({
+                        "type": "plain",
+                        "text": "[引用消息 - 内容获取失败]"
+                    })
             elif isinstance(msg, Comp.Node):
                 node_data = {
                     "name": getattr(msg, "name", ""),
