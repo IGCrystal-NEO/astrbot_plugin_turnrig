@@ -81,3 +81,17 @@
 - 修复了群聊中监听用户的问题
 - meta的上游链接修改
 
+
+
+## [v1.4.0] - 2025-06-09
+
+### Changed
+- pull request #25 from IGCrystal/main
+- pull request #6 from IGCrystal/perf-1
+- branch 'perf-1' of https://github.com/IGCrystal/astrbot_plugin_turnrig into perf-1
+- release v1.4.0
+- update changelog for v1.3.0
+
+### Fixed
+- 可以获取引用消息并转发
+
