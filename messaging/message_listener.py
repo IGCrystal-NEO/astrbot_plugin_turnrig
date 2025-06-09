@@ -168,11 +168,29 @@ class MessageListener:
         """
         try:
             # 获取消息ID，避免重复处理喵～ 🆔
-            message_id = event.message_obj.message_id
+            try:
+                message_id = event.message_obj.message_id
+                if not message_id:
+                    # 生成临时ID防止处理失败喵～ 🔧
+                    message_id = f"temp_{int(time.time())}_{hash(str(event.message_str))}"
+                    logger.warning(f"消息ID为空，使用临时ID: {message_id} 喵～ ⚠️")
+            except AttributeError as e:
+                # 处理消息对象缺少属性的情况喵～ 😿
+                message_id = f"fallback_{int(time.time())}_{hash(str(event.message_str))}"
+                logger.warning(f"获取消息ID失败，使用fallback ID: {message_id}，错误: {e} 喵～ ⚠️")
 
             # 提取 OneBot V11 协议的原始字段喵～ 📋
-            onebot_fields = self._extract_onebot_fields(event)
-            logger.info(f"🎯 提取到的 OneBot 字段喵: {onebot_fields} ✨")
+            try:
+                onebot_fields = self._extract_onebot_fields(event)
+                logger.info(f"🎯 提取到的 OneBot 字段喵: {onebot_fields} ✨")
+            except Exception as e:
+                # 处理字段提取失败的情况喵～ 😿
+                logger.warning(f"提取 OneBot 字段失败，使用默认值喵: {e} ⚠️")
+                onebot_fields = {
+                    "message_type": "unknown",
+                    "sub_type": "normal", 
+                    "platform": "aiocqhttp"
+                }
 
             # 初始化关键变量喵～ 🔢
             has_mface = False
