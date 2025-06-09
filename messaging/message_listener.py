@@ -322,7 +322,7 @@ class MessageListener:
                 should_monitor = self._should_monitor_message(task, event)
                 should_monitor_user = self._should_monitor_user(task, event)
                 should_monitor_group_user = self._should_monitor_group_user(task, event)
-                
+
                 logger.debug(f"任务 {task_id} 监听判断结果喵: 常规监听={should_monitor}, 用户监听={should_monitor_user}, 群内用户监听={should_monitor_group_user} 📊")
 
                 if should_monitor or should_monitor_user or should_monitor_group_user:
@@ -792,14 +792,14 @@ class MessageListener:
 
         group_id_str = str(group_id)
         sender_id_str = str(sender_id)
-        
+
         logger.debug(f"检查群内用户监听喵: 群{group_id_str}, 用户{sender_id_str}, 会话{session_id} 🔍")
 
         # 重要修改：同时检查纯群号和完整会话ID两种格式
         monitored_users = task.get("monitored_users_in_groups", {}).get(
             group_id_str, []
         )
-        
+
         # 如果纯群号没找到，尝试使用完整会话ID
         if not monitored_users:
             monitored_users = task.get("monitored_users_in_groups", {}).get(
@@ -819,7 +819,7 @@ class MessageListener:
 
         # 检查当前发送者是否在监听列表中
         is_monitored = sender_id_str in [str(uid) for uid in monitored_users]
-        
+
         if is_monitored:
             logger.info(f"✅ 群 {group_id_str} 中的用户 {sender_id_str} 在监听列表中，应该监听此消息喵！ 🎯")
         else:
