@@ -321,8 +321,11 @@ class MessageListener:
                 # 检查是否应该监听此消息喵～ 🔍
                 should_monitor = self._should_monitor_message(task, event)
                 should_monitor_user = self._should_monitor_user(task, event)
+                should_monitor_group_user = self._should_monitor_group_user(task, event)
+                
+                logger.debug(f"任务 {task_id} 监听判断结果喵: 常规监听={should_monitor}, 用户监听={should_monitor_user}, 群内用户监听={should_monitor_group_user} 📊")
 
-                if should_monitor or should_monitor_user:
+                if should_monitor or should_monitor_user or should_monitor_group_user:
                     task_matched = True
                     # 确保消息非空 - 优先使用各种方式确保获取到内容喵～ 📝
                     session_id = event.unified_msg_origin
@@ -697,22 +700,8 @@ class MessageListener:
         # 获取群组ID和用户ID
         group_id = event.get_group_id()
 
-        # 检查群内特定用户监听
-        if group_id:
-            group_id_str = str(group_id)
-            # 处理monitored_users_in_groups中使用完整会话ID作为键的情况
-            if group_id_str and group_id_str in task.get(
-                "monitored_users_in_groups", {}
-            ):
-                logger.debug(f"群 {group_id} 已配置特定用户监听，应监听此会话")
-                return True
-
-            # 检查纯群号格式
-            if session_id in task.get("monitored_users_in_groups", {}):
-                logger.debug(
-                    f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话"
-                )
-                return True
+        # 注意：群内特定用户监听由 _should_monitor_group_user 方法专门处理，
+        # 这里只处理常规的群聊和私聊监听，不处理群内用户监听喵～ ⚠️
 
         # 最重要的修复：直接检查会话ID是否存在于任务的monitor_groups中
         if session_id in task.get("monitor_groups", []):
@@ -790,40 +779,51 @@ class MessageListener:
     def _should_monitor_group_user(
         self, task: dict[str, Any], event: AstrMessageEvent
     ) -> bool:
-        """检查是否监听群内特定用户"""
+        """检查是否监听群内特定用户喵～ 🎯"""
         message_type_name = event.get_message_type().name
         group_id = event.get_group_id()
         session_id = event.unified_msg_origin
         sender_id = event.get_sender_id()
 
         # 只处理群消息
-        if message_type_name != "GROUP":
+        if message_type_name != "GROUP_MESSAGE":
+            logger.debug(f"非群消息 ({message_type_name})，跳过群内用户监听检查喵～")
             return False
 
         group_id_str = str(group_id)
+        sender_id_str = str(sender_id)
+        
+        logger.debug(f"检查群内用户监听喵: 群{group_id_str}, 用户{sender_id_str}, 会话{session_id} 🔍")
+
         # 重要修改：同时检查纯群号和完整会话ID两种格式
         monitored_users = task.get("monitored_users_in_groups", {}).get(
             group_id_str, []
         )
-        if not monitored_users and session_id in task.get(
-            "monitored_users_in_groups", {}
-        ):
+        
+        # 如果纯群号没找到，尝试使用完整会话ID
+        if not monitored_users:
             monitored_users = task.get("monitored_users_in_groups", {}).get(
                 session_id, []
             )
+            if monitored_users:
+                logger.debug(f"在完整会话ID {session_id} 中找到用户监听配置喵 📋")
+            else:
+                logger.debug(f"群 {group_id_str} 或会话 {session_id} 没有配置特定用户监听喵 ❌")
 
-        # 如果没有指定用户列表，则监听所有人
+        # 如果没有指定用户列表，则不监听任何人
         if not monitored_users:
+            logger.debug(f"群 {group_id_str} 没有配置特定用户监听，跳过喵～ ⏭️")
             return False
 
-        sender_id_str = str(sender_id)
-        for user_id_str in monitored_users:
-            if user_id_str == sender_id_str:
-                return True
+        logger.debug(f"群 {group_id_str} 的监听用户列表喵: {monitored_users} 👥")
 
+        # 检查当前发送者是否在监听列表中
         is_monitored = sender_id_str in [str(uid) for uid in monitored_users]
+        
         if is_monitored:
-            logger.debug(f"群 {group_id} 中的用户 {sender_id} 在监听列表中")
+            logger.info(f"✅ 群 {group_id_str} 中的用户 {sender_id_str} 在监听列表中，应该监听此消息喵！ 🎯")
+        else:
+            logger.debug(f"❌ 群 {group_id_str} 中的用户 {sender_id_str} 不在监听列表中，跳过此消息喵～ ⏭️")
 
         return is_monitored
 
@@ -847,15 +847,8 @@ class MessageListener:
                 logger.debug(f"群聊 {group_id} 在监听列表中，应监听此会话")
                 return True
 
-            # 检查是否在群内用户监听配置中
-            if session_id in task.get("monitored_users_in_groups", {}):
-                logger.debug(
-                    f"会话ID {session_id} 直接存在于群内用户监听配置中，应监听此会话"
-                )
-                return True
-            if group_id in task.get("monitored_users_in_groups", {}):
-                logger.debug(f"群ID {group_id} 存在于群内用户监听配置中，应监听此会话")
-                return True
+            # 注意：群内用户监听由 _should_monitor_group_user 方法专门处理，
+            # 这里不处理群内用户监听配置喵～ ⚠️
         else:
             user_id = parsed_info["id"]
             if user_id in task.get("monitor_private_users", []):
