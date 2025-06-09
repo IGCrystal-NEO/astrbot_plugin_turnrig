@@ -188,7 +188,7 @@ class MessageListener:
                 logger.warning(f"提取 OneBot 字段失败，使用默认值喵: {e} ⚠️")
                 onebot_fields = {
                     "message_type": "unknown",
-                    "sub_type": "normal", 
+                    "sub_type": "normal",
                     "platform": "aiocqhttp"
                 }
 
