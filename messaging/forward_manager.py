@@ -169,6 +169,14 @@ class ForwardManager:
                 )
                 return
 
+            # 检查消息阈值喵～ 📊
+            max_messages = task.get("max_messages", self.plugin.config.get("default_max_messages", 20))
+            if len(messages) < max_messages:
+                logger.debug(
+                    f"任务 {task_id}: 会话 {session_id} 消息数量 ({len(messages)}) 未达到阈值 ({max_messages})，暂不转发喵～ ⏳"
+                )
+                return
+
             # 筛选有效消息喵～ 🔍
             valid_messages = []
             for msg in messages:
