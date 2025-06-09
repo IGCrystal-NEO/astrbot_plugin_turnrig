@@ -160,7 +160,7 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                     reply_seq = getattr(msg, "seq", 0) or 0
                     sender_id = getattr(msg, "sender_id", "") or ""
                     sender_nickname = getattr(msg, "sender_nickname", "") or "未知用户"
-                    
+
                     # 如果基本属性为空，尝试从 raw_data 中获取喵～ 🔍
                     if (not reply_id or not sender_id) and hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
                         raw_data = msg.raw_data.get("data", {})
@@ -171,7 +171,7 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                         # 还可以尝试获取其他字段
                         if sender_nickname == "未知用户":
                             sender_nickname = raw_data.get("nickname", "") or "未知用户"
-                    
+
                     serialized.append(
                         {
                             "type": "reply",
@@ -190,7 +190,7 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                     # 使用简化的引用消息格式喵～ 📝
                     serialized.append({
                         "type": "plain",
-                        "text": f"[引用消息 - 内容获取失败]"
+                        "text": "[引用消息 - 内容获取失败]"
                     })
             elif isinstance(msg, Comp.Node):
                 node_data = {
@@ -411,7 +411,7 @@ async def async_serialize_message(
                     reply_seq = getattr(msg, "seq", 0) or 0
                     sender_id = getattr(msg, "sender_id", "") or ""
                     sender_nickname = getattr(msg, "sender_nickname", "") or "未知用户"
-                    
+
                     # 如果基本属性为空，尝试从 raw_data 中获取喵～ 🔍
                     if (not reply_id or not sender_id) and hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
                         raw_data = msg.raw_data.get("data", {})
@@ -422,7 +422,7 @@ async def async_serialize_message(
                         # 还可以尝试获取其他字段
                         if sender_nickname == "未知用户":
                             sender_nickname = raw_data.get("nickname", "") or "未知用户"
-                    
+
                     serialized.append(
                         {
                             "type": "reply",
@@ -441,7 +441,7 @@ async def async_serialize_message(
                     # 使用简化的引用消息格式喵～ 📝
                     serialized.append({
                         "type": "plain",
-                        "text": f"[引用消息 - 内容获取失败]"
+                        "text": "[引用消息 - 内容获取失败]"
                     })
             elif isinstance(msg, Comp.Node):
                 node_data = {
