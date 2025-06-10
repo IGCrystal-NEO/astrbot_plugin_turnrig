@@ -133,6 +133,18 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                         "file": getattr(msg, "file", ""),
                     }
                 )  # 警告: 同步获取file喵 ⚠️
+            elif isinstance(msg, Comp.Video):
+                # 序列化视频组件喵～ 🎬
+                video_url = getattr(msg, "url", "")
+                video_file = getattr(msg, "file", "")  # 警告: 同步获取file喵 ⚠️
+                logger.info(f"序列化视频组件喵: url={video_url}, file={video_file} 📹")
+                serialized.append(
+                    {
+                        "type": "video",
+                        "url": video_url,
+                        "file": video_file,
+                    }
+                )
             elif isinstance(msg, Comp.File):
                 file_data = {
                     "type": "file",
@@ -374,6 +386,22 @@ async def async_serialize_message(
                         logger.debug(f"异步获取Record文件数据失败喵: {e}")
 
                 serialized.append({"type": "record", "url": url, "file": file})
+            elif isinstance(msg, Comp.Video):
+                # 异步序列化视频组件喵～ 🎬
+                video_url = getattr(msg, "url", "") or ""
+                video_file = getattr(msg, "file", "") or ""  # 先获取file属性
+
+                # 异步获取文件数据（如果有异步方法的话）
+                if hasattr(msg, "get_file"):
+                    try:
+                        async_file = await msg.get_file()
+                        if async_file:
+                            video_file = str(async_file)
+                    except Exception as e:
+                        logger.debug(f"异步获取Video文件数据失败，使用同步属性喵: {e}")
+
+                logger.info(f"异步序列化视频组件喵: url={video_url}, file={video_file} 📹")
+                serialized.append({"type": "video", "url": video_url, "file": video_file})
             elif isinstance(msg, Comp.File):
                 file_data = {
                     "type": "file",
