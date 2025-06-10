@@ -169,15 +169,7 @@ class ForwardManager:
                 )
                 return
 
-            # 检查消息阈值喵～ 📊
-            max_messages = task.get("max_messages", self.plugin.config.get("default_max_messages", 20))
-            if len(messages) < max_messages:
-                logger.debug(
-                    f"任务 {task_id}: 会话 {session_id} 消息数量 ({len(messages)}) 未达到阈值 ({max_messages})，暂不转发喵～ ⏳"
-                )
-                return
-
-            # 筛选有效消息喵～ 🔍
+            # 先筛选有效消息喵～ 🔍
             valid_messages = []
             for msg in messages:
                 message_components = msg.get("messages", [])  # 修复：使用正确的字段名喵
@@ -186,6 +178,14 @@ class ForwardManager:
                     valid_messages.append(msg)
                 else:
                     logger.warning(f"跳过空消息喵: {msg} 🚫")
+
+            # 检查有效消息阈值喵～ 📊
+            max_messages = task.get("max_messages", self.plugin.config.get("default_max_messages", 20))
+            if len(valid_messages) < max_messages:
+                logger.debug(
+                    f"任务 {task_id}: 会话 {session_id} 有效消息数量 ({len(valid_messages)}) 未达到阈值 ({max_messages})，暂不转发喵～ ⏳"
+                )
+                return
 
             if not valid_messages:
                 logger.warning(
