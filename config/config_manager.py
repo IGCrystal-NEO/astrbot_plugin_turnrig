@@ -108,21 +108,31 @@ class ConfigManager:
             logger.error(f"加载消息缓存失败喵: {e}")
             return {}
 
-    def save_message_cache(self, message_cache: dict):
+    def save_message_cache(self, message_cache: dict, current_config: dict = None):
         """
         保存消息缓存喵～
         把最新的消息缓存安全地存储起来！ 💾
 
         Args:
             message_cache: 要保存的消息缓存字典喵
+            current_config: 当前配置字典，如果提供则使用它来验证任务ID喵
 
         Returns:
             保存成功返回True，失败返回False喵
+
+        Note:
+            修复：现在使用当前配置而不是从文件重新加载，避免任务被意外删除喵！ 🔧
         """
         try:
             # 获取所有有效的任务ID喵～ 🎯
             valid_task_ids = set()
-            config = self.load_config()
+
+            # 优先使用传入的当前配置，否则从文件加载喵～ ✨
+            config = current_config
+            if not config:
+                config = self.load_config()
+                logger.warning("save_message_cache: 没有提供当前配置，从文件加载（可能导致数据不一致）喵～ ⚠️")
+
             if config and "tasks" in config:
                 valid_task_ids = {str(task.get("id", "")) for task in config["tasks"]}
 
