@@ -450,10 +450,10 @@ class MessageBuilder:
         """处理视频组件喵～ 🎬"""
         video_url = comp.get("url", "")
         video_file = comp.get("file", "")
-        
+
         # 优先使用URL，因为file可能是本地路径喵～ 🔗
         video_source = video_url or video_file
-        
+
         if video_source:
             logger.info(f"处理视频组件喵: {video_source} 📹")
             return {
@@ -475,12 +475,12 @@ class MessageBuilder:
         AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma']
         DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf']
         ARCHIVE_EXTENSIONS = ['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2']
-        
+
         # 获取文件信息喵～ 📋
         file_name = comp.get("name", "未知文件")
         file_url = comp.get("url", "")
         file_size = comp.get("size", 0)
-        
+
         # 格式化文件大小喵～ 📏
         def format_file_size(size_bytes):
             if size_bytes == 0:
@@ -493,12 +493,12 @@ class MessageBuilder:
                 return f"{size_bytes / (1024 * 1024):.1f}MB"
             else:
                 return f"{size_bytes / (1024 * 1024 * 1024):.1f}GB"
-        
+
         # 获取文件扩展名喵～ 🔍
         file_ext = ""
         if "." in file_name:
             file_ext = "." + file_name.split(".")[-1].lower()
-        
+
         # 根据文件类型选择图标和描述喵～ 🎭
         if file_ext in VIDEO_EXTENSIONS:
             icon = "🎬"
@@ -524,17 +524,17 @@ class MessageBuilder:
             icon = "📁"
             type_name = "文件"
             action = "点击下载"
-        
+
         # 构建显示文本喵～ 📝
         size_text = format_file_size(file_size)
         display_text = f"{icon} {type_name}: {file_name} ({size_text})"
-        
+
         # 如果有下载链接，添加链接信息喵～ 🔗
         if file_url:
             display_text += f"\n🔗 {action}: {file_url}"
-        
+
         logger.info(f"处理文件组件喵: {type_name} - {file_name} ({size_text}) 📁")
-        
+
         return {"type": "text", "data": {"text": display_text}}
 
     async def _process_json_component(self, comp: dict) -> dict:

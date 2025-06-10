@@ -263,7 +263,7 @@ class ForwardManager:
             import hashlib
             message_batch_content = str([msg.get("message_outline", "") + str(msg.get("timestamp", 0)) for msg in valid_messages])
             batch_hash = hashlib.md5(message_batch_content.encode()).hexdigest()[:8]
-            
+
             # 向每个目标会话发送消息喵～ 📤
             for target_session in target_sessions:
                 try:

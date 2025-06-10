@@ -922,26 +922,26 @@ class MessageListener:
     def _is_empty_message(self, cached_message: dict) -> bool:
         """
         检测消息是否为空消息（如群文件上传通知）喵～ 🔍
-        
+
         Args:
             cached_message: 缓存的消息字典喵
-            
+
         Returns:
             如果是空消息返回True，否则返回False喵
         """
         try:
             messages = cached_message.get("messages", [])
-            
+
             # 如果没有消息组件，肯定是空消息喵～
             if not messages:
                 return True
-            
+
             # 检查是否只包含群文件上传通知喵～
             for msg in messages:
                 if isinstance(msg, dict):
                     msg_type = msg.get("type")
                     notice_type = msg.get("notice_type")
-                    
+
                     # 群文件上传通知被认为是空消息喵～
                     if msg_type == "notice" and notice_type == "group_upload":
                         continue
@@ -951,10 +951,10 @@ class MessageListener:
                 else:
                     # 如果有非字典的消息，就不是空消息喵～
                     return False
-                    
+
             # 如果只有群文件上传通知，就是空消息喵～
             return True
-            
+
         except Exception as e:
             # 出错时保守处理，认为不是空消息喵～
             logger.debug(f"检测空消息时出错喵: {e}")
@@ -964,32 +964,32 @@ class MessageListener:
         """
         智能清理缓存策略喵～ 🧠✨
         优先删除空消息，然后删除旧的有效消息，确保有效消息数量符合阈值要求喵！
-        
+
         Args:
             task_id: 任务ID喵
-            session_id: 会话ID喵  
+            session_id: 会话ID喵
             max_messages: 消息阈值喵
         """
         try:
             cache = self.plugin.message_cache[task_id][session_id]
             cache_capacity = max(max_messages * 3, 20)  # 缓存容量 = 阈值 × 3，最小20喵
-            
+
             logger.debug(f"开始智能缓存清理检查喵: 当前缓存 {len(cache)}，容量限制 {cache_capacity}，阈值 {max_messages}")
-            
+
             # 分类消息：有效消息和空消息喵～
             valid_messages = []
             empty_messages = []
-            
+
             for msg in cache:
                 if self._is_empty_message(msg):
                     empty_messages.append(msg)
                 else:
                     valid_messages.append(msg)
-                    
+
             logger.debug(f"消息分类结果喵: 有效消息 {len(valid_messages)}，空消息 {len(empty_messages)}")
-            
+
             removed_count = 0
-            
+
             # 第一步：清理所有空消息（但保留一些以免丢失上下文）喵～
             if len(empty_messages) > 2:  # 最多保留2条空消息作为上下文喵～
                 empty_to_remove = len(empty_messages) - 2
@@ -998,34 +998,34 @@ class MessageListener:
                 for i in range(empty_to_remove):
                     cache.remove(empty_messages[i])
                     removed_count += 1
-                    
+
                 logger.debug(f"删除了 {empty_to_remove} 条空消息喵～")
-            
+
             # 第二步：如果缓存超过容量限制，删除旧的有效消息喵～
             if len(cache) > cache_capacity:
                 need_to_remove = len(cache) - cache_capacity
-                
+
                 # 重新获取当前缓存中的有效消息喵～
                 current_valid = []
                 for msg in cache:
                     if not self._is_empty_message(msg):
                         current_valid.append(msg)
-                
+
                 # 确保删除后有效消息数量不少于阈值喵～
                 can_remove = max(0, len(current_valid) - max_messages)
                 actual_remove = min(need_to_remove, can_remove)
-                
+
                 if actual_remove > 0:
                     # 按时间戳排序，删除最老的有效消息喵～
                     current_valid.sort(key=lambda x: x.get("timestamp", 0))
                     for i in range(actual_remove):
                         cache.remove(current_valid[i])
                         removed_count += 1
-                        
+
                     logger.debug(f"删除了 {actual_remove} 条旧的有效消息喵～")
-            
+
             if removed_count > 0:
                 logger.info(f"智能缓存清理完成喵: 删除了 {removed_count} 条消息，当前缓存 {len(cache)} 条")
-            
+
         except Exception as e:
             logger.error(f"智能缓存清理时出错喵: {e}")

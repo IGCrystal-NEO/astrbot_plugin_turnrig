@@ -252,10 +252,10 @@ class TurnRigPlugin(Star):
                         if not messages:
                             logger.debug(f"跳过空缓存会话 {session_id} 在任务 {task_id} 中")
                             continue
-                            
+
                         # 简单使用最后一条消息的时间戳喵～
                         last_message_timestamp = messages[-1].get("timestamp", 0)
-                        
+
                         # 检查是否真的超过1小时未活动喵～ ⏰
                         if last_message_timestamp > 0 and time.time() - last_message_timestamp > 3600:
                             logger.debug(f"会话 {session_id} 在任务 {task_id} 中超过1小时未活动")
