@@ -1,3 +1,4 @@
+import hashlib
 import time
 
 from astrbot.api import logger
@@ -199,6 +200,19 @@ class RetryManager:
         Note:
             会构建转发节点并使用原生API发送喵～ ✨
         """
+        # 添加防重复发送检查喵～ 🛡️
+        logger.info(f"重试前检查消息去重，目标会话: {target_session}")
+
+        # 生成消息批次的唯一标识符喵～ 🆔
+        message_batch_content = str([msg.get("message_outline", "") + str(msg.get("timestamp", 0)) for msg in valid_messages])
+        batch_hash = hashlib.md5(message_batch_content.encode()).hexdigest()[:8]
+        batch_id = f"retry_{target_session}_{batch_hash}"
+
+        # 检查这批消息是否已经发送过喵～ 🔍
+        if self.message_sender._is_message_sent(target_session, batch_id):
+            logger.warning(f"检测到重复发送风险！批次 {batch_id} 已发送过，跳过重试喵～ 🚫")
+            return
+
         nodes_list = []
 
         # 构建消息节点喵～ 🏗️
@@ -216,8 +230,19 @@ class RetryManager:
         )
         nodes_list.append(footer_node)
 
-        # 直接使用原生API发送喵～ 📡
-        await self.message_sender.send_forward_message_via_api(
-            target_session, nodes_list
-        )
-        logger.info(f"成功重试发送消息到 {target_session} 喵～ ✅")
+        try:
+            # 直接使用原生API发送喵～ 📡
+            send_success = await self.message_sender.send_forward_message_via_api(
+                target_session, nodes_list
+            )
+
+            if send_success:
+                # 标记这批消息为已发送，防止后续重复喵～ ✅
+                self.message_sender._add_sent_message(target_session, batch_id)
+                logger.info(f"成功重试发送消息到 {target_session} 喵～ ✅")
+            else:
+                logger.warning("重试发送失败，但不再加入失败队列喵～ ⚠️")
+
+        except Exception as e:
+            logger.error(f"重试发送过程中出错喵: {e}")
+            # 重试失败也不再继续重试，避免无限循环喵～
