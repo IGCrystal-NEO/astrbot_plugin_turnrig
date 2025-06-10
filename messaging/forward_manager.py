@@ -259,6 +259,11 @@ class ForwardManager:
             )
             nodes_list.append(footer_node)
 
+            # 生成这批消息的防重复标识符喵～ 🛡️
+            import hashlib
+            message_batch_content = str([msg.get("message_outline", "") + str(msg.get("timestamp", 0)) for msg in valid_messages])
+            batch_hash = hashlib.md5(message_batch_content.encode()).hexdigest()[:8]
+            
             # 向每个目标会话发送消息喵～ 📤
             for target_session in target_sessions:
                 try:
@@ -278,6 +283,9 @@ class ForwardManager:
                         logger.warning(f"未找到平台适配器喵: {target_platform} 😿")
                         continue
 
+                    # 生成这次转发的批次ID喵～ 🆔
+                    batch_id = f"forward_{target_session}_{batch_hash}"
+
                     # 根据平台选择发送方式喵～ 🎯
                     if target_platform == "aiocqhttp":
                         logger.debug(
@@ -287,10 +295,15 @@ class ForwardManager:
                             target_session, nodes_list
                         )
 
-                        if not api_result:
+                        if api_result:
+                            # 发送成功，标记批次ID防止重复喵～ ✅
+                            self.message_sender._add_sent_message(target_session, batch_id)
+                        elif not api_result:
                             logger.warning(
                                 "使用原生API发送转发消息失败，但已通过备选方案处理喵～ 🔄"
                             )
+                            # 备选方案可能也成功了，为安全起见也标记一下喵～ 🛡️
+                            self.message_sender._add_sent_message(target_session, batch_id)
 
                         # 清除失败缓存喵～ 🧹
                         self.cache_manager.remove_failed_message(
@@ -301,6 +314,8 @@ class ForwardManager:
                         await self.message_sender.send_to_non_qq_platform(
                             target_session, source_name, valid_messages
                         )
+                        # 非QQ平台发送后也标记批次ID喵～ 🆔
+                        self.message_sender._add_sent_message(target_session, batch_id)
 
                     logger.info(f"成功将消息转发到 {target_session} 喵～ ✅")
 
@@ -315,8 +330,9 @@ class ForwardManager:
                     )
 
             # 清除已处理的消息缓存喵～ 🧹
-            self.plugin.message_cache[task_id][session_id] = []
-            logger.info(f"任务 {task_id}: 已清除会话 {session_id} 的消息缓存喵～ ✨")
+            if task_id in self.plugin.message_cache and session_id in self.plugin.message_cache[task_id]:
+                self.plugin.message_cache[task_id][session_id] = []
+                logger.info(f"任务 {task_id}: 已清除会话 {session_id} 的消息缓存喵～ ✨")
 
             self.plugin.save_message_cache()
 
