@@ -248,11 +248,52 @@ class MessageBuilder:
         elif comp_type == "reply":
             # 从序列化数据中正确提取引用消息信息喵～ 📨
             reply_data = comp.get("data", {})
+
+            # 增强引用消息处理，支持复杂内容喵～ ✨
+            reply_content = reply_data.get("content", [])
+
+            # 构建引用消息的显示内容喵～ 🏗️
+            if isinstance(reply_content, list) and reply_content:
+                # 如果引用消息包含复杂内容，转换为文本显示喵～ 📝
+                content_parts = []
+                for content_item in reply_content:
+                    if isinstance(content_item, dict):
+                        content_type = content_item.get("type", "")
+                        if content_type == "text":
+                            text_data = content_item.get("data", {})
+                            text_content = text_data.get("text", "")
+                            if text_content:
+                                content_parts.append(text_content)
+                        elif content_type == "image":
+                            content_parts.append("[图片]")
+                        elif content_type == "file":
+                            file_name = content_item.get("data", {}).get("name", "文件")
+                            content_parts.append(f"[文件: {file_name}]")
+                        elif content_type == "record":
+                            content_parts.append("[语音]")
+                        elif content_type == "video":
+                            content_parts.append("[视频]")
+                        elif content_type == "at":
+                            at_qq = content_item.get("data", {}).get("qq", "")
+                            content_parts.append(f"@{at_qq}")
+                        elif content_type == "face":
+                            content_parts.append("[表情]")
+                        else:
+                            # 其他类型的内容喵～
+                            content_parts.append(f"[{content_type}]")
+
+                # 组合引用内容显示喵～ 📋
+                reply_text = " ".join(content_parts) if content_parts else "[引用消息]"
+            else:
+                # 简单处理或空内容喵～ 📝
+                reply_text = reply_data.get("text", "[引用消息]")
+
+            # 返回引用消息节点喵～ 📨
             return {
                 "type": "reply",
                 "data": {
                     "id": reply_data.get("id", ""),
-                    "text": reply_data.get("text", ""),
+                    "text": reply_text,  # 使用增强的文本显示喵～ ✨
                     "qq": reply_data.get("sender_id", ""),
                     "time": reply_data.get("time", timestamp),
                     "sender": {"nickname": reply_data.get("sender_nickname", "未知用户")},

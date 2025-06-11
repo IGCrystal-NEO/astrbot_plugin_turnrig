@@ -162,10 +162,46 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                 serialized.append(file_data)
             elif isinstance(msg, Comp.Reply):
                 try:
+                    # 增强引用消息处理，支持复杂内容喵～ 📨✨
+                    node_content = []
+
+                    # 处理引用消息的内容喵～ 🔍
                     if hasattr(msg, "content") and msg.content:
-                        node_content = [{"type": "plain", "text": str(msg.content)}]
-                    else:
-                        node_content = []
+                        # 如果content是字符串，直接处理喵～ 📝
+                        if isinstance(msg.content, str):
+                            node_content = [{"type": "text", "data": {"text": str(msg.content)}}]
+                        # 如果content是列表，可能包含复杂组件喵～ 📋
+                        elif isinstance(msg.content, list):
+                            try:
+                                # 递归序列化引用消息的内容喵～ 🔄
+                                node_content = serialize_message(msg.content)
+                                logger.debug(f"成功序列化引用消息的复杂内容，包含 {len(node_content)} 个组件喵～ ✅")
+                            except Exception as content_error:
+                                logger.warning(f"序列化引用消息内容失败，使用简化格式喵: {content_error} ⚠️")
+                                node_content = [{"type": "text", "data": {"text": "[引用内容处理失败]"}}]
+                        else:
+                            # 其他类型转换为文本喵～ 📝
+                            node_content = [{"type": "text", "data": {"text": str(msg.content)}}]
+
+                    # 尝试从原始数据中获取更多信息喵～ 🔍
+                    raw_content = []
+                    if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                        raw_data = msg.raw_data.get("data", {})
+                        # 检查是否有message字段包含更详细的内容喵～ 📨
+                        if "message" in raw_data and isinstance(raw_data["message"], list):
+                            try:
+                                # 直接使用OneBot格式的消息内容喵～ 🎯
+                                for item in raw_data["message"]:
+                                    if isinstance(item, dict):
+                                        raw_content.append(item)
+                                logger.debug(f"从raw_data提取到 {len(raw_content)} 个消息组件喵～ ✅")
+                            except Exception as raw_error:
+                                logger.debug(f"处理raw_data消息内容失败喵: {raw_error}")
+
+                    # 合并处理结果，优先使用更详细的内容喵～ 🔗
+                    final_content = raw_content if raw_content else node_content
+                    if not final_content:
+                        final_content = [{"type": "text", "data": {"text": "[引用消息]"}}]
 
                     # 安全地获取引用消息属性，优先从 raw_data 获取喵～ 🛡️
                     reply_id = getattr(msg, "id", "") or ""
@@ -190,19 +226,19 @@ def serialize_message(message: list[Comp.BaseMessageComponent]) -> list[dict[str
                             "data": {
                                 "id": str(reply_id),
                                 "seq": int(reply_seq) if str(reply_seq).isdigit() else 0,
-                                "content": node_content,
+                                "content": final_content,  # 使用增强的内容处理结果喵～ ✨
                                 "sender_id": str(sender_id),
                                 "sender_nickname": sender_nickname,
                             },
                         }
                     )
-                    logger.debug(f"序列化引用消息喵: id={reply_id}, sender={sender_nickname}({sender_id}) 📨")
+                    logger.debug(f"序列化引用消息喵: id={reply_id}, sender={sender_nickname}({sender_id}), 内容组件={len(final_content)} 📨")
                 except Exception as e:
                     logger.warning(f"序列化引用消息失败，使用简化格式喵: {e} ⚠️")
                     # 使用简化的引用消息格式喵～ 📝
                     serialized.append({
-                        "type": "plain",
-                        "text": "[引用消息 - 内容获取失败]"
+                        "type": "text",
+                        "data": {"text": "[引用消息 - 内容获取失败]"}
                     })
             elif isinstance(msg, Comp.Node):
                 node_data = {
@@ -429,10 +465,46 @@ async def async_serialize_message(
                 serialized.append(file_data)
             elif isinstance(msg, Comp.Reply):
                 try:
+                    # 增强引用消息处理，支持复杂内容喵～ 📨✨
+                    node_content = []
+
+                    # 处理引用消息的内容喵～ 🔍
                     if hasattr(msg, "content") and msg.content:
-                        node_content = [{"type": "plain", "text": str(msg.content)}]
-                    else:
-                        node_content = []
+                        # 如果content是字符串，直接处理喵～ 📝
+                        if isinstance(msg.content, str):
+                            node_content = [{"type": "text", "data": {"text": str(msg.content)}}]
+                        # 如果content是列表，可能包含复杂组件喵～ 📋
+                        elif isinstance(msg.content, list):
+                            try:
+                                # 递归序列化引用消息的内容喵～ 🔄
+                                node_content = serialize_message(msg.content)
+                                logger.debug(f"成功序列化引用消息的复杂内容，包含 {len(node_content)} 个组件喵～ ✅")
+                            except Exception as content_error:
+                                logger.warning(f"序列化引用消息内容失败，使用简化格式喵: {content_error} ⚠️")
+                                node_content = [{"type": "text", "data": {"text": "[引用内容处理失败]"}}]
+                        else:
+                            # 其他类型转换为文本喵～ 📝
+                            node_content = [{"type": "text", "data": {"text": str(msg.content)}}]
+
+                    # 尝试从原始数据中获取更多信息喵～ 🔍
+                    raw_content = []
+                    if hasattr(msg, "raw_data") and isinstance(msg.raw_data, dict):
+                        raw_data = msg.raw_data.get("data", {})
+                        # 检查是否有message字段包含更详细的内容喵～ 📨
+                        if "message" in raw_data and isinstance(raw_data["message"], list):
+                            try:
+                                # 直接使用OneBot格式的消息内容喵～ 🎯
+                                for item in raw_data["message"]:
+                                    if isinstance(item, dict):
+                                        raw_content.append(item)
+                                logger.debug(f"从raw_data提取到 {len(raw_content)} 个消息组件喵～ ✅")
+                            except Exception as raw_error:
+                                logger.debug(f"处理raw_data消息内容失败喵: {raw_error}")
+
+                    # 合并处理结果，优先使用更详细的内容喵～ 🔗
+                    final_content = raw_content if raw_content else node_content
+                    if not final_content:
+                        final_content = [{"type": "text", "data": {"text": "[引用消息]"}}]
 
                     # 安全地获取引用消息属性，优先从 raw_data 获取喵～ 🛡️
                     reply_id = getattr(msg, "id", "") or ""
@@ -457,19 +529,19 @@ async def async_serialize_message(
                             "data": {
                                 "id": str(reply_id),
                                 "seq": int(reply_seq) if str(reply_seq).isdigit() else 0,
-                                "content": node_content,
+                                "content": final_content,  # 使用增强的内容处理结果喵～ ✨
                                 "sender_id": str(sender_id),
                                 "sender_nickname": sender_nickname,
                             },
                         }
                     )
-                    logger.debug(f"异步序列化引用消息喵: id={reply_id}, sender={sender_nickname}({sender_id}) 📨")
+                    logger.debug(f"序列化引用消息喵: id={reply_id}, sender={sender_nickname}({sender_id}), 内容组件={len(final_content)} 📨")
                 except Exception as e:
-                    logger.warning(f"异步序列化引用消息失败，使用简化格式喵: {e} ⚠️")
+                    logger.warning(f"序列化引用消息失败，使用简化格式喵: {e} ⚠️")
                     # 使用简化的引用消息格式喵～ 📝
                     serialized.append({
-                        "type": "plain",
-                        "text": "[引用消息 - 内容获取失败]"
+                        "type": "text",
+                        "data": {"text": "[引用消息 - 内容获取失败]"}
                     })
             elif isinstance(msg, Comp.Node):
                 node_data = {

@@ -69,6 +69,7 @@ class TurnRigPlugin(Star):
         self.config = self.config_manager.load_config() or {
             "tasks": [],
             "default_max_messages": 20,
+            "bot_self_ids": [],  # 机器人ID列表，用于防止循环发送喵～ 🤖
         }
 
         # 如果收到了 AstrBot 的配置，且当前配置为空，才使用 AstrBot 配置喵～ 🔄
@@ -98,6 +99,10 @@ class TurnRigPlugin(Star):
         # 确保配置有default_max_messages字段喵～ 🔢
         if "default_max_messages" not in self.config:
             self.config["default_max_messages"] = 20
+
+        # 确保配置有bot_self_ids字段喵～ 🤖
+        if "bot_self_ids" not in self.config:
+            self.config["bot_self_ids"] = []
 
         # 如果没有任何任务，创建一个自动捕获所有消息的测试任务喵～ 🧪
         if not self.config["tasks"]:
@@ -197,30 +202,10 @@ class TurnRigPlugin(Star):
         把缓存的消息都安全地保存到文件里！
 
         Note:
-            会显示详细的缓存统计信息喵～ 📊
+            现在会传递当前配置，避免任务被意外删除喵～ 🔧
         """
-        # 添加更详细的日志喵～ 📋
-        cache_stats = {}
-        total_messages = 0
-
-        for task_id, sessions in self.message_cache.items():
-            session_count = len(sessions)
-            messages_in_task = sum(len(msgs) for msgs in sessions.values())
-            total_messages += messages_in_task
-            cache_stats[task_id] = {
-                "sessions": session_count,
-                "messages": messages_in_task,
-            }
-
-        logger.info(
-            f"保存消息缓存，共 {len(cache_stats)} 个任务，{total_messages} 条消息喵～ 💫"
-        )
-        for task_id, stats in cache_stats.items():
-            logger.info(
-                f"  任务 {task_id}: {stats['sessions']} 个会话，共 {stats['messages']} 条消息喵～ 📊"
-            )
-
-        self.config_manager.save_message_cache(self.message_cache)
+        # 传递当前配置给config_manager，避免从文件重新加载导致的任务丢失喵～ ✨
+        self.config_manager.save_message_cache(self.message_cache, self.config)
 
     async def periodic_save(self):
         """
@@ -691,6 +676,21 @@ class TurnRigPlugin(Star):
     async def cleanup_ids(self, event: AstrMessageEvent, days: int = 7):
         """清理过期消息ID喵～ 🧹"""
         return await self.command_handlers.handle_cleanup_ids(event, days)
+
+    @turnrig.command("addbot")
+    async def add_bot_id(self, event: AstrMessageEvent, bot_id: str = None):
+        """添加机器人ID到过滤列表喵～ 🤖"""
+        return await self.command_handlers.handle_add_bot_id(event, bot_id)
+
+    @turnrig.command("removebot")
+    async def remove_bot_id(self, event: AstrMessageEvent, bot_id: str = None):
+        """从过滤列表移除机器人ID喵～ 🗑️"""
+        return await self.command_handlers.handle_remove_bot_id(event, bot_id)
+
+    @turnrig.command("listbots")
+    async def list_bot_ids(self, event: AstrMessageEvent):
+        """列出所有过滤的机器人ID喵～ 📋"""
+        return await self.command_handlers.handle_list_bot_ids(event)
 
     @turnrig.command("adduser")
     async def add_user_in_group(
