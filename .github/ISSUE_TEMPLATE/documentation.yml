@@ -1,0 +1,137 @@
+name: 📖 文档改进
+description: 报告文档问题或建议文档改进喵～
+title: "[DOCS] "
+labels: ["documentation", "改进"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你帮助改善麦咪的文档喵♡～ 好的文档让更多人能享受插件的便利！✨
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: 📋 文档类型
+      description: 这是关于哪种类型的文档喵？
+      options:
+        - README.md
+        - 安装指南
+        - 配置说明
+        - 使用教程
+        - API文档
+        - 常见问题
+        - 故障排除
+        - 示例代码
+        - 更新日志
+        - 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: 🏷️ 问题类型
+      description: 这是什么类型的文档问题喵？
+      options:
+        - 内容错误
+        - 信息过时
+        - 信息缺失
+        - 表述不清
+        - 格式问题
+        - 链接失效
+        - 示例错误
+        - 新增建议
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-content
+    attributes:
+      label: 📄 当前内容
+      description: 请指出有问题的文档内容或章节喵～
+      placeholder: |
+        请复制有问题的文档片段，或者描述在哪个位置...
+        例如：README.md中的"配置示例"部分，第XX行...
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: ❓ 问题描述
+      description: 详细描述文档的问题喵～
+      placeholder: |
+        例如：
+        - 这个配置示例已经过时了
+        - 缺少对这个参数的说明
+        - 这个步骤描述不够清楚
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-improvement
+    attributes:
+      label: 💡 改进建议
+      description: 你建议如何改进这部分文档喵？
+      placeholder: |
+        例如：
+        - 更新配置示例为最新版本
+        - 添加参数说明表格
+        - 增加截图或图示说明
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-impact
+    attributes:
+      label: 👥 用户影响
+      description: 这个文档问题会如何影响用户喵？
+      placeholder: |
+        例如：
+        - 新用户按照这个示例配置会失败
+        - 用户不知道如何设置这个功能
+        - 容易引起误解导致配置错误
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 📈 优先级
+      description: 你认为这个文档问题的优先级如何喵？
+      options:
+        - 高 (严重影响使用)
+        - 中 (建议尽快修复)
+        - 低 (有空的时候改进)
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📎 其他信息
+      description: 还有什么其他相关的信息想告诉麦咪的吗？
+      placeholder: 例如：相关的截图、参考资料、或者其他背景信息...
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: 🤝 参与意愿
+      description: 你愿意参与文档改进吗喵？
+      options:
+        - label: 我愿意帮助编写或修改文档
+        - label: 我可以提供更多的使用示例
+        - label: 我可以帮助审查改进后的文档
+        - label: 我只是提出建议
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ 确认事项
+      description: 请确认以下事项喵～
+      options:
+        - label: 我已经检查了最新版本的文档
+          required: true
+        - label: 我已经搜索了现有的文档相关issues
+          required: true
+        - label: 我的建议有助于改善用户体验
+          required: true 
