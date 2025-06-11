@@ -114,3 +114,21 @@
 - 防止重复发送消息
 - 修复消息阈值
 
+
+
+## [v1.6.0] - 2025-06-11
+
+### Added
+- release v1.6.0
+
+### Changed
+- pull request #31 from IGCrystal/perf-1
+- branch 'WentUrc:main' into perf-1
+- branch 'perf-1' of https://github.com/IGCrystal/astrbot_plugin_turnrig into perf-1
+- pull request #30 from IGCrystal/main
+- pull request #8 from IGCrystal/perf-1
+- update changelog for v1.5.0
+
+### Fixed
+- 修复重复发送转发消息的问题
+
