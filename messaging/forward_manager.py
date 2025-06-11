@@ -238,6 +238,7 @@ class ForwardManager:
                 message_components = msg.get("messages", [])
                 has_forward = False
 
+                # 先检查是否有转发组件喵～ 🔍
                 for comp in message_components:
                     if isinstance(comp, dict) and comp.get("type") == "forward":
                         if "nodes" in comp and isinstance(comp["nodes"], list):
@@ -271,8 +272,13 @@ class ForwardManager:
 
                 # 如果没有转发组件，使用普通的节点构建方式喵～ 🏗️
                 if not has_forward:
-                    node = await self.build_forward_node(msg)
-                nodes_list.append(node)
+                    try:
+                        regular_node = await self.build_forward_node(msg)
+                        nodes_list.append(regular_node)
+                    except Exception as e:
+                        logger.error(f"构建普通转发节点失败喵: {e} 😿")
+                        # 即使失败也要添加一个空节点，避免整个转发失败喵～ 🛡️
+                        continue
 
             # 添加底部信息节点喵～ 📝
             footer_node = self.message_builder.build_footer_node(
