@@ -1411,7 +1411,7 @@ class CommandHandlers:
         # 添加到过滤列表
         if "bot_self_ids" not in self.plugin.config:
             self.plugin.config["bot_self_ids"] = []
-        
+
         self.plugin.config["bot_self_ids"].append(bot_id_str)
         self.plugin.save_config_file()
 
@@ -1482,17 +1482,17 @@ class CommandHandlers:
             return response
 
         bot_ids = self.plugin.config.get("bot_self_ids", [])
-        
+
         if not bot_ids:
             return event.plain_result("当前没有配置任何机器人ID过滤喵～\n" +
                                     "使用 /turnrig addbot <QQ号> 添加机器人ID到过滤列表！")
 
         result = "🤖 机器人ID过滤列表喵～\n"
         result += "=" * 30 + "\n\n"
-        
+
         for i, bot_id in enumerate(bot_ids, 1):
             result += f"{i}. {bot_id}\n"
-        
+
         result += "\n" + "=" * 30 + "\n"
         result += f"共 {len(bot_ids)} 个机器人ID在过滤列表中喵～\n"
         result += "这些ID的消息不会被插件监听，避免循环发送！"
