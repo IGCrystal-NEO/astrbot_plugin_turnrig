@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 查看文档
+    url: https://github.com/WentUrc/astrbot_plugin_turnrig/blob/main/README.md
+    about: 查看插件的详细使用文档和配置说明喵～
+  
+  - name: 💬 加入讨论
+    url: https://github.com/WentUrc/astrbot_plugin_turnrig/discussions
+    about: 在讨论区与其他用户交流使用心得和技巧喵～
+    
+  - name: 🔍 常见问题
+    url: https://github.com/WentUrc/astrbot_plugin_turnrig/wiki/FAQ
+    about: 查看常见问题和解决方案，可能你的问题已经有答案了喵～
+    
+  - name: 🚀 AstrBot官方
+    url: https://github.com/AstrBotDevs/AstrBot
+    about: 访问AstrBot主项目，了解框架相关信息喵～ 

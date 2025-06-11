@@ -132,3 +132,18 @@
 ### Fixed
 - 修复重复发送转发消息的问题
 
+
+
+## [v1.6.1] - 2025-06-11
+
+### Added
+- release v1.6.1
+
+### Changed
+- pull request #32 from IGCrystal/main
+- pull request #9 from IGCrystal/perf-1
+- update changelog for v1.6.0
+
+### Fixed
+- 修复转发合并转发消息失败的问题
+

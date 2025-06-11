@@ -1,0 +1,129 @@
+name: ✨ 功能请求
+description: 建议新功能或改进现有功能喵～
+title: "[FEATURE] "
+labels: ["enhancement", "功能请求"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你为麦咪的转发插件提出改进建议喵♡～ 你的想法让插件变得更好呢！✨
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: 🌟 功能描述
+      description: 清晰地描述你希望的新功能或改进喵～
+      placeholder: 例如：希望支持自定义转发消息格式，或者添加消息过滤功能等...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-solving
+    attributes:
+      label: 🎯 解决的问题
+      description: 这个功能会解决什么问题或改善什么体验喵？
+      placeholder: 例如：当前无法过滤敏感词，导致转发了不合适的消息...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 💡 建议的解决方案
+      description: 你觉得应该如何实现这个功能喵？
+      placeholder: |
+        例如：
+        1. 在配置中添加敏感词列表
+        2. 在转发前检查消息内容
+        3. 匹配到敏感词时跳过该消息
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: 🏷️ 功能类型
+      description: 这是什么类型的功能请求喵？
+      options:
+        - 新功能
+        - 现有功能改进
+        - 性能优化
+        - 界面优化
+        - 配置选项
+        - 兼容性改进
+        - 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 📈 优先级
+      description: 你觉得这个功能的优先级如何喵？
+      options:
+        - 高 (急需这个功能)
+        - 中 (会很有用)
+        - 低 (有了更好)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 替代方案
+      description: 你考虑过其他的替代方案吗？为什么选择这个方案喵？
+      placeholder: 例如：考虑过手动删除消息，但太麻烦了；考虑过在目标群设置，但不够灵活...
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: 📖 使用场景
+      description: 详细描述一下使用场景，帮助麦咪更好地理解需求喵～
+      placeholder: |
+        例如：
+        场景1：工作群转发到汇总群，需要过滤掉闲聊内容
+        场景2：多个讨论群转发到决策群，需要只保留关键信息
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: ⚙️ 技术细节
+      description: 如果你有技术背景，可以提供一些实现细节或建议喵～
+      placeholder: 例如：可以使用正则表达式匹配，或者集成某个API...
+
+  - type: dropdown
+    id: willing-to-help
+    attributes:
+      label: 🤝 参与意愿
+      description: 你愿意参与这个功能的开发吗喵？
+      options:
+        - 我可以帮助开发代码
+        - 我可以帮助测试功能
+        - 我可以提供需求细化
+        - 我只是提出建议
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 📎 其他信息
+      description: 还有什么其他相关的信息想告诉麦咪的吗？
+      placeholder: 例如：相关的插件、类似的功能实现、参考资料等...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ 确认事项
+      description: 请确认以下事项喵～
+      options:
+        - label: 我已经搜索了现有的issues和文档，确认这是新的功能请求
+          required: true
+        - label: 这个功能符合插件的设计目标和定位
+          required: true
+        - label: 我理解功能开发需要时间，会耐心等待
+          required: true 

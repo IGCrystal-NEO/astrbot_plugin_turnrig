@@ -1,0 +1,119 @@
+name: 🆘 问题求助
+description: 使用过程中遇到困难，需要帮助喵～
+title: "[HELP] "
+labels: ["question", "需要帮助"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        不要担心喵♡～ 麦咪很乐意帮助你解决使用中的问题！请详细描述你的困难，我们一起解决吧！✨
+
+  - type: textarea
+    id: question-description
+    attributes:
+      label: ❓ 问题描述
+      description: 请描述你遇到的困难或不明白的地方喵～
+      placeholder: 例如：不知道如何配置多个转发目标，或者不理解某个配置选项的含义...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: 🏷️ 问题类型
+      description: 这是什么类型的问题喵？
+      options:
+        - 安装配置问题
+        - 使用方法问题
+        - 配置理解问题
+        - 功能不确定
+        - 最佳实践咨询
+        - 故障排除
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-tried
+    attributes:
+      label: 🔧 已尝试的方法
+      description: 你已经尝试了哪些方法来解决这个问题喵？
+      placeholder: |
+        例如：
+        1. 查看了README文档
+        2. 尝试了XXX配置
+        3. 搜索了相关问题
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-config
+    attributes:
+      label: ⚙️ 当前配置
+      description: 请提供你当前的插件配置（记得隐藏敏感信息）喵～
+      placeholder: |
+        请粘贴相关的配置内容，记得隐藏token等敏感信息...
+      render: json
+
+  - type: input
+    id: environment
+    attributes:
+      label: 🌍 环境信息
+      description: 你的运行环境喵？
+      placeholder: 例如：Windows 10 + AstrBot v3.x.x + Python 3.9
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-result
+    attributes:
+      label: 🎯 期望结果
+      description: 你希望达到什么效果喵？
+      placeholder: 例如：希望消息能自动从A群转发到B群和C群...
+    validations:
+      required: true
+
+  - type: textarea
+    id: specific-scenario
+    attributes:
+      label: 📖 具体场景
+      description: 请详细描述你的使用场景，这有助于麦咪给出更准确的建议喵～
+      placeholder: |
+        例如：
+        - 有3个工作群，希望重要消息都转发到汇总群
+        - 希望过滤掉某些类型的消息
+        - 需要在转发时添加来源标识
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: ⏰ 紧急程度
+      description: 这个问题的紧急程度如何喵？
+      options:
+        - 紧急 (影响正常使用)
+        - 一般 (希望尽快解决)
+        - 不急 (有时间的时候)
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: 📎 其他信息
+      description: 还有什么其他相关的信息想告诉麦咪的吗？
+      placeholder: 例如：相关的错误信息、截图、或者其他背景信息...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: ✅ 确认事项
+      description: 请确认以下事项喵～
+      options:
+        - label: 我已经查看了文档和常见问题
+          required: true
+        - label: 我已经搜索了现有的issues
+          required: true
+        - label: 我提供的信息是准确和完整的
+          required: true 
