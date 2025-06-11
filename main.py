@@ -99,7 +99,7 @@ class TurnRigPlugin(Star):
         # 确保配置有default_max_messages字段喵～ 🔢
         if "default_max_messages" not in self.config:
             self.config["default_max_messages"] = 20
-            
+
         # 确保配置有bot_self_ids字段喵～ 🤖
         if "bot_self_ids" not in self.config:
             self.config["bot_self_ids"] = []
@@ -682,7 +682,7 @@ class TurnRigPlugin(Star):
         """添加机器人ID到过滤列表喵～ 🤖"""
         return await self.command_handlers.handle_add_bot_id(event, bot_id)
 
-    @turnrig.command("removebot") 
+    @turnrig.command("removebot")
     async def remove_bot_id(self, event: AstrMessageEvent, bot_id: str = None):
         """从过滤列表移除机器人ID喵～ 🗑️"""
         return await self.command_handlers.handle_remove_bot_id(event, bot_id)

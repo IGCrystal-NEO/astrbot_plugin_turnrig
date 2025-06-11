@@ -56,7 +56,7 @@ class ForwardManager:
         # 初始化转发状态追踪喵～ 🏁
         self._currently_forwarding = set()
         self._processing_forwards = set()
-        
+
         # 启动定期重试任务喵～ 🔄
         asyncio.create_task(self.periodic_retry_operations())
 
@@ -155,20 +155,20 @@ class ForwardManager:
         """
         # 生成函数级别的锁定键，包含任务和会话信息喵～ 🔐
         function_key = f"forward_{task_id}_{session_id}"
-        
+
         # 检查是否已经在处理相同的转发请求喵～ 🛡️
         if hasattr(self, '_processing_forwards') and function_key in self._processing_forwards:
             logger.warning(f"检测到重复的转发函数调用，跳过: {function_key} 喵～ 🚫")
             return
-            
+
         # 初始化处理标记集合喵～ 🏁
         if not hasattr(self, '_processing_forwards'):
             self._processing_forwards = set()
-        
+
         # 标记正在处理喵～ 🏷️
         self._processing_forwards.add(function_key)
         logger.debug(f"开始处理转发函数: {function_key} 喵～ 🚀")
-        
+
         try:
             # 获取任务信息喵～ 🔍
             task = self.plugin.get_task_by_id(task_id)
@@ -283,16 +283,16 @@ class ForwardManager:
             # 生成这批消息的防重复标识符喵～ 🛡️
             message_batch_content = str([msg.get("message_outline", "") + str(msg.get("timestamp", 0)) for msg in valid_messages])
             batch_hash = hashlib.md5(message_batch_content.encode()).hexdigest()[:8]
-            
+
             # 加强防重复检查：检查是否正在转发相同内容喵～ 🛡️
             forwarding_key = f"{task_id}_{session_id}_{batch_hash}"
             if not hasattr(self, '_currently_forwarding'):
                 self._currently_forwarding = set()
-                
+
             if forwarding_key in self._currently_forwarding:
                 logger.warning(f"检测到重复转发请求，跳过: {forwarding_key} 喵～ 🚫")
                 return
-            
+
             # 标记正在转发喵～ 🏷️
             self._currently_forwarding.add(forwarding_key)
             logger.debug(f"开始转发任务: {forwarding_key} 喵～ 🚀")

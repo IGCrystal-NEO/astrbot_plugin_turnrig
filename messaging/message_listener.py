@@ -206,13 +206,13 @@ class MessageListener:
                 # 多种方式获取机器人ID和发送者ID喵～ 🔍
                 bot_self_id = None
                 sender_id = None
-                
+
                 # 方法1: 从事件对象获取
                 if hasattr(event.message_obj, 'self_id'):
                     bot_self_id = str(event.message_obj.self_id)
                 elif hasattr(event.message_obj, 'raw_message') and hasattr(event.message_obj.raw_message, 'get'):
                     bot_self_id = str(event.message_obj.raw_message.get('self_id', ''))
-                
+
                 # 方法2: 从多个地方获取发送者ID
                 if hasattr(event, 'sender_id'):
                     sender_id = str(event.sender_id)
@@ -220,14 +220,14 @@ class MessageListener:
                     sender_id = str(event.message_obj.sender.user_id)
                 elif hasattr(event.message_obj, 'raw_message') and hasattr(event.message_obj.raw_message, 'get'):
                     sender_id = str(event.message_obj.raw_message.get('user_id', ''))
-                
+
                 logger.debug(f"自我消息检查喵: bot_self_id={bot_self_id}, sender_id={sender_id} 🔍")
-                
+
                 # 如果发送者是机器人自己，直接跳过处理喵～ 🤖
                 if bot_self_id and sender_id and bot_self_id == sender_id:
                     logger.warning(f"⚠️ 消息 {message_id} 是机器人自己发送的，跳过监听避免循环喵～ 🔄")
                     return
-                    
+
                 # 从插件上下文动态获取机器人ID进行额外检查喵～ 🤖
                 try:
                     if hasattr(self.plugin, 'context'):
@@ -237,13 +237,13 @@ class MessageListener:
                             return
                 except Exception as context_e:
                     logger.debug(f"无法从上下文获取机器人ID: {context_e} 喵～")
-                
+
                 # 备用检查：从配置文件读取机器人ID列表进行检查喵～ 🛡️
                 bot_ids_from_config = self.plugin.config.get("bot_self_ids", [])
                 if sender_id and sender_id in bot_ids_from_config:
                     logger.warning(f"⚠️ 消息 {message_id} 来自配置中的机器人账号 {sender_id}，跳过监听喵～ 🤖")
                     return
-                    
+
             except Exception as e:
                 logger.warning(f"检查自我消息时出错，继续处理: {e} 喵～ ⚠️")
 
@@ -263,7 +263,7 @@ class MessageListener:
                 if plain_text.startswith("/fn ") or plain_text == "/fn":
                     logger.debug(f"消息 {message_id} 是转发指令，跳过监听喵～ 🔄")
                     return
-                
+
                 # 检查是否是插件转发的消息特征喵～ 🔍
                 forwarded_patterns = [
                     "【转发消息】",
