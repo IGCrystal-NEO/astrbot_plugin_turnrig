@@ -4,6 +4,30 @@
 
 > 一个消息监听与转发插件，支持多种消息类型喵～
 
+## 📚 文档导航
+
+### 🌟 用户文档
+- 📖 [完整文档](docs/README.md) - 完整的文档中心，包含所有详细信息
+- 📦 [安装指南](docs/user-guide/installation.md) - 详细的安装步骤和配置说明
+- ⚙️ [配置说明](docs/user-guide/configuration.md) - 所有配置参数的详细解释
+- 🚀 [使用教程](docs/user-guide/usage.md) - 从基础到高级的使用方法
+- 🔧 [故障排除](docs/user-guide/troubleshooting.md) - 常见问题和解决方案
+
+### 👩‍💻 开发者文档
+- 🎨 [代码风格](docs/development/coding-style.md) - 麦咪特有的可爱代码规范
+- 🔧 [插件开发](docs/development/plugin-development.md) - AstrBot插件开发指南
+- 🤝 [贡献指南](CONTRIBUTING.md) - 如何为项目做贡献
+
+### 📡 API参考
+- 📨 [消息处理](docs/api/message-handling.md) - 消息处理相关API
+- 🔀 [转发功能](docs/api/forwarding.md) - 转发核心功能API  
+- 📋 [配置结构](docs/api/configuration-schema.md) - 配置文件结构说明
+
+### 🏛️ 架构文档
+- 🎯 [设计概览](docs/architecture/overview.md) - 整体设计理念和目标
+- 🧩 [组件设计](docs/architecture/component-design.md) - 各个组件的设计说明
+- 📊 [消息流程](docs/architecture/message-flow.md) - 数据在组件间的流转
+
 <img src="https://raw.githubusercontent.com/IGCyukira/IGCyukira/refs/heads/main/img/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8821%E6%97%A5%2017_32_36.png" width="50%" />
 
 ## ✨ 功能特点喵～
