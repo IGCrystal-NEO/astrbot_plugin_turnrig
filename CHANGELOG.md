@@ -95,3 +95,22 @@
 ### Fixed
 - 可以获取引用消息并转发
 
+
+
+## [v1.5.0] - 2025-06-10
+
+### Added
+- release v1.5.0
+- 支持转发视频以及群文件
+
+### Changed
+- pull request #28 from IGCrystal/main
+- pull request #7 from IGCrystal/perf-1
+- 使用ruff格式化
+- pull request #26 from WentUrc/pre-commit-ci-update-config
+- update changelog for v1.4.0
+
+### Fixed
+- 防止重复发送消息
+- 修复消息阈值
+

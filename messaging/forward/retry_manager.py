@@ -130,10 +130,11 @@ class RetryManager:
                     # 根据平台选择发送方式喵～ 🎯
                     if target_platform == "aiocqhttp":
                         await self._retry_send_to_qq(target_session, valid_messages)
-                        # 发送成功，删除失败缓存记录喵～ ✅
+                        # 无论重试结果如何，都删除失败缓存记录，避免无限循环喵～ ✅
                         self.cache_manager.remove_failed_message(
                             target_session, task_id, source_session
                         )
+                        logger.info(f"已移除任务 {task_id} 到 {target_session} 的失败缓存记录喵～ 🧹")
                     else:
                         logger.warning(
                             f"目前重试功能只支持QQ平台，跳过 {target_session} 喵～ ⏭️"
@@ -213,6 +214,12 @@ class RetryManager:
             logger.warning(f"检测到重复发送风险！批次 {batch_id} 已发送过，跳过重试喵～ 🚫")
             return
 
+        # 同时检查原始转发批次ID喵～ 🔍
+        original_batch_id = f"forward_{target_session}_{batch_hash}"
+        if self.message_sender._is_message_sent(target_session, original_batch_id):
+            logger.warning(f"检测到重复发送风险！原始批次 {original_batch_id} 已发送过，跳过重试喵～ 🚫")
+            return
+
         nodes_list = []
 
         # 构建消息节点喵～ 🏗️
@@ -241,8 +248,9 @@ class RetryManager:
                 self.message_sender._add_sent_message(target_session, batch_id)
                 logger.info(f"成功重试发送消息到 {target_session} 喵～ ✅")
             else:
-                logger.warning("重试发送失败，但不再加入失败队列喵～ ⚠️")
+                logger.warning(f"重试发送失败，但不再加入失败队列喵～ ⚠️ (target: {target_session})")
 
         except Exception as e:
             logger.error(f"重试发送过程中出错喵: {e}")
-            # 重试失败也不再继续重试，避免无限循环喵～
+            # 重试失败也不再继续重试，避免无限循环喵～ ⚠️
+            logger.warning(f"重试发送出错，但不再加入失败队列喵～ (target: {target_session})")
