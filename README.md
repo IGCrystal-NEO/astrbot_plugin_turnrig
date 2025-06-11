@@ -4,8 +4,6 @@
 
 > 一个消息监听与转发插件，支持多种消息类型喵～
 
-<img src="https://raw.githubusercontent.com/IGCyukira/IGCyukira/refs/heads/main/img/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8821%E6%97%A5%2017_32_36.png" width="50%" />
-
 ## 📚 文档导航
 
 ### 🌟 用户文档
@@ -177,3 +175,5 @@
 - GitHub: [WentUrc/astrbot_plugin_turnrig](https://github.com/WentUrc/astrbot_plugin_turnrig)
 
 感谢使用转发侦听插件喵～！希望它能为你带来便利喵～❤️
+
+<img src="https://raw.githubusercontent.com/IGCyukira/IGCyukira/refs/heads/main/img/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8821%E6%97%A5%2017_32_36.png" width="100%" />
