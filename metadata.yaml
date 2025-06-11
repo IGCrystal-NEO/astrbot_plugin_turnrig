@@ -1,5 +1,5 @@
 name: "turnrig"
 author: "IGCrystal"
-version: "v1.5.0"
+version: "v1.6.0"
 desc: "监听并转发消息的插件，支持多种消息类型和发送目标"
 repo: "https://github.com/WentUrc/astrbot_plugin_turnrig"
