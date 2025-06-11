@@ -4,6 +4,8 @@
 
 > 一个消息监听与转发插件，支持多种消息类型喵～
 
+<img src="https://raw.githubusercontent.com/IGCyukira/IGCyukira/refs/heads/main/img/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8821%E6%97%A5%2017_32_36.png" width="50%" />
+
 ## 📚 文档导航
 
 ### 🌟 用户文档
@@ -28,9 +30,7 @@
 - 🧩 [组件设计](docs/architecture/component-design.md) - 各个组件的设计说明
 - 📊 [消息流程](docs/architecture/message-flow.md) - 数据在组件间的流转
 
-<img src="https://raw.githubusercontent.com/IGCyukira/IGCyukira/refs/heads/main/img/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8821%E6%97%A5%2017_32_36.png" width="50%" />
-
-## ✨ 功能特点喵～
+## ✨ 功能一览喵～
 
 - 🔍 **多源监听**: 可以同时监听多个群聊/私聊的消息喵～
 - 🚀 **灵活转发**: 支持将消息转发到多个目标会话喵～

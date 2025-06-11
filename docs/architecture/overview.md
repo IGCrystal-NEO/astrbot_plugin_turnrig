@@ -40,6 +40,9 @@
 
 ### 系统架构图
 
+> [!TIP]
+> 这图可能是错的。
+
 ```mermaid
 graph TB
     subgraph "AstrBot 框架层"
@@ -106,6 +109,9 @@ graph TB
 
 ### 消息处理流程
 
+> [!TIP]
+> 这图可能是错的。
+
 ```mermaid
 sequenceDiagram
     participant U as 用户
@@ -142,6 +148,9 @@ sequenceDiagram
 ```
 
 ### 配置管理流程
+
+> [!TIP]
+> 这图可能是错的。
 
 ```mermaid
 flowchart TD

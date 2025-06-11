@@ -109,6 +109,9 @@ class MessageListener:
 
 #### 1. 多层过滤机制
 
+> [!TIP]
+> 这图可能是错的。
+
 ```mermaid
 flowchart TD
     A[原始消息事件] --> B[消息ID去重检查]
@@ -373,6 +376,9 @@ class MessageSender:
 
 #### 1. 多级发送策略
 
+> [!TIP]
+> 这图可能是错的。
+
 ```mermaid
 flowchart TD
     A[开始发送] --> B[图片预上传]
@@ -629,6 +635,9 @@ async def convert_image_format(self, input_path: str, target_format: str) -> str
 ## 🧠 智能缓存设计
 
 ### 多级缓存架构
+
+> [!TIP]
+> 这图可能是错的。
 
 ```mermaid
 graph TD
