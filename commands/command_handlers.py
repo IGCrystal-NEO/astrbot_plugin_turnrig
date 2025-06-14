@@ -1484,8 +1484,10 @@ class CommandHandlers:
         bot_ids = self.plugin.config.get("bot_self_ids", [])
 
         if not bot_ids:
-            return event.plain_result("当前没有配置任何机器人ID过滤喵～\n" +
-                                    "使用 /turnrig addbot <QQ号> 添加机器人ID到过滤列表！")
+            return event.plain_result(
+                "当前没有配置任何机器人ID过滤喵～\n"
+                + "使用 /turnrig addbot <QQ号> 添加机器人ID到过滤列表！"
+            )
 
         result = "🤖 机器人ID过滤列表喵～\n"
         result += "=" * 30 + "\n\n"

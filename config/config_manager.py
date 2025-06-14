@@ -131,7 +131,9 @@ class ConfigManager:
             config = current_config
             if not config:
                 config = self.load_config()
-                logger.warning("save_message_cache: 没有提供当前配置，从文件加载（可能导致数据不一致）喵～ ⚠️")
+                logger.warning(
+                    "save_message_cache: 没有提供当前配置，从文件加载（可能导致数据不一致）喵～ ⚠️"
+                )
 
             if config and "tasks" in config:
                 valid_task_ids = {str(task.get("id", "")) for task in config["tasks"]}
