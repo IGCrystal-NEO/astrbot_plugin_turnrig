@@ -157,12 +157,15 @@ class ForwardManager:
         function_key = f"forward_{task_id}_{session_id}"
 
         # 检查是否已经在处理相同的转发请求喵～ 🛡️
-        if hasattr(self, '_processing_forwards') and function_key in self._processing_forwards:
+        if (
+            hasattr(self, "_processing_forwards")
+            and function_key in self._processing_forwards
+        ):
             logger.warning(f"检测到重复的转发函数调用，跳过: {function_key} 喵～ 🚫")
             return
 
         # 初始化处理标记集合喵～ 🏁
-        if not hasattr(self, '_processing_forwards'):
+        if not hasattr(self, "_processing_forwards"):
             self._processing_forwards = set()
 
         # 标记正在处理喵～ 🏷️
@@ -201,7 +204,9 @@ class ForwardManager:
                     logger.warning(f"跳过空消息喵: {msg} 🚫")
 
             # 检查有效消息阈值喵～ 📊
-            max_messages = task.get("max_messages", self.plugin.config.get("default_max_messages", 20))
+            max_messages = task.get(
+                "max_messages", self.plugin.config.get("default_max_messages", 20)
+            )
             if len(valid_messages) < max_messages:
                 logger.debug(
                     f"任务 {task_id}: 会话 {session_id} 有效消息数量 ({len(valid_messages)}) 未达到阈值 ({max_messages})，暂不转发喵～ ⏳"
@@ -243,10 +248,12 @@ class ForwardManager:
                     if isinstance(comp, dict) and comp.get("type") == "forward":
                         if "nodes" in comp and isinstance(comp["nodes"], list):
                             # 创建嵌套转发消息的节点，使用原始转发ID喵～ 📤
-                            forward_id = comp.get('id', '未知ID')
-                            forward_node_count = len(comp['nodes'])
+                            forward_id = comp.get("id", "未知ID")
+                            forward_node_count = len(comp["nodes"])
 
-                            logger.info(f"创建嵌套转发消息节点喵: {forward_id} (包含 {forward_node_count} 条消息) 📨")
+                            logger.info(
+                                f"创建嵌套转发消息节点喵: {forward_id} (包含 {forward_node_count} 条消息) 📨"
+                            )
 
                             # 构建包含嵌套转发的节点，使用原始ID而不是重构节点喵～ 🏗️
                             nested_forward_node = {
@@ -255,15 +262,10 @@ class ForwardManager:
                                     "name": msg.get("sender_name", "未知用户"),
                                     "uin": str(msg.get("sender_id", "0")),
                                     "content": [
-                                        {
-                                            "type": "forward",
-                                            "data": {
-                                                "id": forward_id
-                                            }
-                                        }
+                                        {"type": "forward", "data": {"id": forward_id}}
                                     ],
-                                    "time": msg.get("timestamp", int(time.time()))
-                                }
+                                    "time": msg.get("timestamp", int(time.time())),
+                                },
                             }
 
                             nodes_list.append(nested_forward_node)
@@ -287,12 +289,17 @@ class ForwardManager:
             nodes_list.append(footer_node)
 
             # 生成这批消息的防重复标识符喵～ 🛡️
-            message_batch_content = str([msg.get("message_outline", "") + str(msg.get("timestamp", 0)) for msg in valid_messages])
+            message_batch_content = str(
+                [
+                    msg.get("message_outline", "") + str(msg.get("timestamp", 0))
+                    for msg in valid_messages
+                ]
+            )
             batch_hash = hashlib.md5(message_batch_content.encode()).hexdigest()[:8]
 
             # 加强防重复检查：检查是否正在转发相同内容喵～ 🛡️
             forwarding_key = f"{task_id}_{session_id}_{batch_hash}"
-            if not hasattr(self, '_currently_forwarding'):
+            if not hasattr(self, "_currently_forwarding"):
                 self._currently_forwarding = set()
 
             if forwarding_key in self._currently_forwarding:
@@ -309,7 +316,9 @@ class ForwardManager:
                     try:
                         # 解析目标会话信息喵～ 🔍
                         target_parts = (
-                            target_session.split(":", 2) if ":" in target_session else []
+                            target_session.split(":", 2)
+                            if ":" in target_session
+                            else []
                         )
                         if len(target_parts) != 3:
                             logger.warning(f"目标会话格式无效喵: {target_session} ❌")
@@ -337,14 +346,20 @@ class ForwardManager:
 
                             if api_result:
                                 # 发送成功，标记批次ID防止重复喵～ ✅
-                                self.message_sender._add_sent_message(target_session, batch_id)
+                                self.message_sender._add_sent_message(
+                                    target_session, batch_id
+                                )
                                 # 清除失败缓存喵～ 🧹
                                 self.cache_manager.remove_failed_message(
                                     target_session, task_id, session_id
                                 )
-                                logger.info(f"成功将消息转发到 {target_session} 喵～ ✅")
+                                logger.info(
+                                    f"成功将消息转发到 {target_session} 喵～ ✅"
+                                )
                             else:
-                                logger.error(f"发送转发消息到 {target_session} 失败喵～ 😿")
+                                logger.error(
+                                    f"发送转发消息到 {target_session} 失败喵～ 😿"
+                                )
                                 # 只有真正失败时才记录失败缓存喵～ 💾
                                 self.cache_manager.add_failed_message(
                                     target_session, task_id, session_id
@@ -353,21 +368,31 @@ class ForwardManager:
                         else:
                             # 非QQ平台使用常规方式发送喵～ 📱
                             try:
-                                non_qq_result = await self.message_sender.send_to_non_qq_platform(
-                                    target_session, source_name, valid_messages
+                                non_qq_result = (
+                                    await self.message_sender.send_to_non_qq_platform(
+                                        target_session, source_name, valid_messages
+                                    )
                                 )
                                 if non_qq_result:
                                     # 非QQ平台发送成功后才标记批次ID喵～ 🆔
-                                    self.message_sender._add_sent_message(target_session, batch_id)
-                                    logger.info(f"成功将消息转发到 {target_session} 喵～ ✅")
+                                    self.message_sender._add_sent_message(
+                                        target_session, batch_id
+                                    )
+                                    logger.info(
+                                        f"成功将消息转发到 {target_session} 喵～ ✅"
+                                    )
                                 else:
-                                    logger.error(f"发送转发消息到 {target_session} 失败喵～ 😿")
+                                    logger.error(
+                                        f"发送转发消息到 {target_session} 失败喵～ 😿"
+                                    )
                                     # 非QQ平台发送失败时也记录失败缓存喵～ 💾
                                     self.cache_manager.add_failed_message(
                                         target_session, task_id, session_id
                                     )
                             except Exception as send_error:
-                                logger.error(f"发送转发消息到 {target_session} 出错喵: {send_error} 😿")
+                                logger.error(
+                                    f"发送转发消息到 {target_session} 出错喵: {send_error} 😿"
+                                )
                                 # 发送出错时记录失败缓存喵～ 💾
                                 self.cache_manager.add_failed_message(
                                     target_session, task_id, session_id
@@ -380,18 +405,28 @@ class ForwardManager:
                         # 注意：不再重复添加失败缓存，因为内层已经处理了具体的发送失败情况
 
                 # 清除已处理的消息缓存喵～ 🧹
-                if task_id in self.plugin.message_cache and session_id in self.plugin.message_cache[task_id]:
+                if (
+                    task_id in self.plugin.message_cache
+                    and session_id in self.plugin.message_cache[task_id]
+                ):
                     self.plugin.message_cache[task_id][session_id] = []
-                    logger.info(f"任务 {task_id}: 已清除会话 {session_id} 的消息缓存喵～ ✨")
+                    logger.info(
+                        f"任务 {task_id}: 已清除会话 {session_id} 的消息缓存喵～ ✨"
+                    )
 
                 self.plugin.save_message_cache()
 
             finally:
                 # 清除转发标记喵～ 🧹
                 try:
-                    if hasattr(self, '_currently_forwarding') and forwarding_key in self._currently_forwarding:
+                    if (
+                        hasattr(self, "_currently_forwarding")
+                        and forwarding_key in self._currently_forwarding
+                    ):
                         self._currently_forwarding.remove(forwarding_key)
-                        logger.debug(f"完成转发任务，清除标记: {forwarding_key} 喵～ ✅")
+                        logger.debug(
+                            f"完成转发任务，清除标记: {forwarding_key} 喵～ ✅"
+                        )
                 except Exception as cleanup_error:
                     logger.error(f"清理转发标记时出错: {cleanup_error} 喵～ 😿")
 
@@ -402,7 +437,10 @@ class ForwardManager:
         finally:
             # 清除函数级别的处理标记喵～ 🧹
             try:
-                if hasattr(self, '_processing_forwards') and function_key in self._processing_forwards:
+                if (
+                    hasattr(self, "_processing_forwards")
+                    and function_key in self._processing_forwards
+                ):
                     self._processing_forwards.remove(function_key)
                     logger.debug(f"完成转发函数，清除标记: {function_key} 喵～ ✅")
             except Exception as cleanup_error:

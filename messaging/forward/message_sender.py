@@ -219,16 +219,25 @@ class MessageSender:
                                 if item.get("type") == "reply":
                                     reply_count += 1
                                     # 检查引用消息内容是否包含文件喵～ 📁
-                                    reply_content = item.get("data", {}).get("content", [])
+                                    reply_content = item.get("data", {}).get(
+                                        "content", []
+                                    )
                                     for reply_item in reply_content:
-                                        if isinstance(reply_item, dict) and reply_item.get("type") == "file":
+                                        if (
+                                            isinstance(reply_item, dict)
+                                            and reply_item.get("type") == "file"
+                                        ):
                                             file_count += 1
-                                            logger.debug(f"检测到引用消息中包含文件喵: {reply_item.get('data', {}).get('name', '未知文件')} 📁")
+                                            logger.debug(
+                                                f"检测到引用消息中包含文件喵: {reply_item.get('data', {}).get('name', '未知文件')} 📁"
+                                            )
                                 elif item.get("type") == "file":
                                     file_count += 1
 
                 if reply_count > 0 or file_count > 0:
-                    logger.info(f"📊 任务 {task_id}: 节点分析 - 引用消息: {reply_count}个, 文件: {file_count}个")
+                    logger.info(
+                        f"📊 任务 {task_id}: 节点分析 - 引用消息: {reply_count}个, 文件: {file_count}个"
+                    )
 
                 # 添加详细的JSON结构日志，帮助调试
                 if "GroupMessage" in target_session:
@@ -264,9 +273,13 @@ class MessageSender:
                     logger.warning(f"❌ 任务 {task_id}: 策略1: 合并转发消息发送失败")
                     logger.warning(f"   失败响应: {error_msg}")
                     if reply_count > 0:
-                        logger.warning(f"   可能原因: 包含 {reply_count} 个引用消息，可能其中有文件内容导致合并转发失败喵～ 📨")
+                        logger.warning(
+                            f"   可能原因: 包含 {reply_count} 个引用消息，可能其中有文件内容导致合并转发失败喵～ 📨"
+                        )
                     if file_count > 0:
-                        logger.warning(f"   可能原因: 包含 {file_count} 个文件，可能导致合并转发失败喵～ 📁")
+                        logger.warning(
+                            f"   可能原因: 包含 {file_count} 个文件，可能导致合并转发失败喵～ 📁"
+                        )
                     logger.info("   将尝试策略2: GIF转静态图")
             except Exception as e:
                 logger.warning(f"❌ 任务 {task_id}: 策略1失败: {e}")
