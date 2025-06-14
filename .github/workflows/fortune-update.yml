@@ -2,7 +2,7 @@ name: 🔮 麦咪的数字占卜更新
 
 on:
   schedule:
-    # 每小时运行一次 (UTC时间)
+    # 每小时运行一次
     - cron: '0 * * * *'
   workflow_dispatch: # 允许手动触发
 
@@ -41,7 +41,7 @@ jobs:
         git config --local user.email "IGCrystal@wenturc.com"
         git config --local user.name "麦咪占卜师"
         git add README.md
-        git commit -m "🔮 更新麦咪的数字占卜 - $(date -u +'%Y-%m-%d %H:%M UTC')"
+        git commit -m "🔮 更新麦咪的数字占卜 - $(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M CST')"
         
         # 尝试直接推送，如果失败则提示需要配置PAT
         if ! git push; then
