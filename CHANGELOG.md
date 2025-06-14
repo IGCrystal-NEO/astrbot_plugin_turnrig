@@ -147,3 +147,44 @@
 ### Fixed
 - 修复转发合并转发消息失败的问题
 
+
+
+## [v1.6.2] - 2025-06-14
+
+### Added
+- 让README占卜
+- issue模板终于有了
+
+### Changed
+- pull request #42 from IGCrystal/main
+- branch 'main' into main
+- pull request #21 from IGCrystal/perf-1
+- branch 'perf-1' of https://github.com/IGCrystal/astrbot_plugin_turnrig into perf-1
+- 修改时间为UTC+8
+- pull request #41 from IGCrystal/main
+- branch 'WentUrc:main' into perf-1
+- pull request #20 from IGCrystal/perf-1
+- branch 'WentUrc:main' into main
+- ruff.yml
+- pull request #19 from IGCrystal/Larch-C-patch-1
+- 故意加入空格以测试工作流
+- pull request #17 from IGCrystal/perf-1
+- pull request #39 from IGCrystal/main
+- pull request #16 from IGCrystal/perf-1
+- 使用ruff格式化
+- pull request #15 from IGCrystal/perf-1
+- 修改版本号
+- pull request #38 from IGCrystal/main
+- pull request #14 from IGCrystal/perf-1
+- pull request #36 from IGCrystal/main
+- pull request #13 from IGCrystal/perf-1
+- 修改图像显示
+- pull request #35 from IGCrystal/main
+- pull request #12 from IGCrystal/perf-1
+- 修改文档
+- pull request #11 from IGCrystal/perf-1
+- 完善项目文档
+- pull request #33 from IGCrystal/main
+- pull request #10 from IGCrystal/perf-1
+- update changelog for v1.6.1
+
