@@ -13,7 +13,7 @@ def get_seed():
     """基于当前小时生成种子，确保同一小时内结果一致 (使用UTC+8时区)"""
     # 使用UTC时间加8小时得到北京时间
     now = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
-    
+
     # 使用年月日小时作为种子，确保每小时更新
     seed_str = f"{now.year}{now.month:02d}{now.day:02d}{now.hour:02d}"
     return int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
@@ -84,7 +84,9 @@ def get_fortune():
     tip = random.choice(daily_tips)
 
     # 15%概率触发特殊事件
-    special = random.choice(special_events) if random.random() < 0.15 else None    # 生成时间戳 (使用UTC+8时区)
+    special = (
+        random.choice(special_events) if random.random() < 0.15 else None
+    )  # 生成时间戳 (使用UTC+8时区)
     now = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
     timestamp = now.strftime("%Y-%m-%d %H:%M CST")
 
