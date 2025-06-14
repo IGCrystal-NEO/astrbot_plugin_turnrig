@@ -1,74 +1,173 @@
 name: Lint with Ruff
+
 on:
   push:
     branches:
       - main
+      - master
   pull_request:
+    branches:
+      - main
+      - master
 
-# 添加明确的权限设置
+# 工作流的显式权限设置
 permissions:
   contents: write
   pull-requests: write
+  checks: write
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # 改进分支引用逻辑
+          # 为推送和PR事件使用正确的引用
           ref: ${{ github.head_ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          # 获取完整历史记录以便更好地进行git操作
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5  # 更新到 v5
         with:
           python-version: '3.x'
+          cache: 'pip'  # 缓存 pip 依赖
 
       - name: Install Ruff
         run: |
           python -m pip install --upgrade pip
           pip install ruff
 
-      - name: Run Ruff Check
+      - name: Run Ruff Check (Lint Only)
+        id: ruff_check
         run: |
-          ruff check . --output-format=github
+          echo "Running Ruff check..."
+          if ruff check . --output-format=github; then
+            echo "lint_passed=true" >> $GITHUB_OUTPUT
+            echo "✅ No linting issues found!"
+          else
+            echo "lint_passed=false" >> $GITHUB_OUTPUT
+            echo "❌ Linting issues found!"
+          fi
+        continue-on-error: true
 
-      - name: Run Ruff Fix
+      - name: Run Ruff Format Check
+        id: ruff_format
         run: |
+          echo "Checking code formatting..."
+          if ruff format --check .; then
+            echo "format_passed=true" >> $GITHUB_OUTPUT
+            echo "✅ Code formatting is correct!"
+          else
+            echo "format_passed=false" >> $GITHUB_OUTPUT
+            echo "❌ Code formatting issues found!"
+          fi
+        continue-on-error: true
+
+      # 仅对拉取请求尝试自动修复
+      - name: Auto-fix issues (PR only)
+        if: github.event_name == 'pull_request' && (steps.ruff_check.outputs.lint_passed == 'false' || steps.ruff_format.outputs.format_passed == 'false')
+        run: |
+          echo "Attempting to auto-fix linting and formatting issues..."
+          
+          # 修复代码检查问题
           ruff check --fix .
+          
+          # 修复格式问题
+          ruff format .
+          
+          echo "Auto-fix completed!"
 
-      - name: Check for changes
+      - name: Check for changes after auto-fix
+        if: github.event_name == 'pull_request'
         id: check_changes
         run: |
           if git diff --quiet; then
-            echo "changes=false" >> $GITHUB_OUTPUT
-            echo "No changes needed! 🎉"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No changes needed after auto-fix!"
           else
-            echo "changes=true" >> $GITHUB_OUTPUT
-            echo "Found changes that need to be committed."
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "📝 Changes were made during auto-fix"
+            echo "Files changed:"
+            git diff --name-only
           fi
 
-      - name: Commit and push changes
-        if: steps.check_changes.outputs.changes == 'true' && github.event_name == 'pull_request'
+      - name: Commit and push auto-fixes
+        if: github.event_name == 'pull_request' && steps.check_changes.outputs.has_changes == 'true'
         run: |
+          # 配置 git
           git config --local user.name 'Pine-Ln'
           git config --local user.email 'Chrysanthemum@wenturc.com'
-          git add -A
-          git commit -m "🤖 Auto-fix linting issues with Ruff"
           
-          # 更详细的推送错误处理
-          echo "Attempting to push changes..."
-          if ! git push origin HEAD:${{ github.head_ref }}; then
-            echo "❌ Push failed! Checking possible causes:"
-            echo "1. Branch protection rules"
-            echo "2. Insufficient permissions"
-            echo "3. Token issues"
-            echo "Current branch: $(git branch --show-current)"
-            echo "Remote URL: $(git remote get-url origin)"
-            exit 1
+          # 暂存所有更改
+          git add -A
+          
+          # 创建提交
+          git commit -m "🤖 Auto-fix: Resolve linting and formatting issues
+          
+          - Fixed linting issues with ruff check --fix
+          - Fixed formatting issues with ruff format
+          - Automated by GitHub Actions"
+          
+          # 推送更改
+          echo "Pushing changes to ${{ github.head_ref }}..."
+          if git push origin HEAD:${{ github.head_ref }}; then
+            echo "✅ Successfully pushed auto-fixes!"
           else
-            echo "✅ Successfully pushed changes!"
-          fi 
+            echo "❌ Failed to push changes. This might be due to:"
+            echo "  - Branch protection rules"
+            echo "  - Insufficient token permissions"
+            echo "  - Conflicts with recent commits"
+            echo ""
+            echo "You may need to manually apply these fixes:"
+            echo "  ruff check --fix ."
+            echo "  ruff format ."
+            exit 1
+          fi
+
+      # 最终检查 - 如果问题仍然存在则使工作流失败
+      - name: Final validation
+        run: |
+          echo "Running final validation..."
+          
+          # 检查代码检查
+          if ! ruff check . --output-format=github; then
+            echo "❌ Linting issues still remain!"
+            exit 1
+          fi
+          
+          # 检查格式
+          if ! ruff format --check .; then
+            echo "❌ Formatting issues still remain!"
+            exit 1
+          fi
+          
+          echo "✅ All checks passed!"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 📋 Ruff Linting Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ steps.ruff_check.outputs.lint_passed }}" == "true" ]]; then
+            echo "✅ **Linting**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Linting**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ steps.ruff_format.outputs.format_passed }}" == "true" ]]; then
+            echo "✅ **Formatting**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Formatting**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [[ "${{ github.event_name }}" == "pull_request" ]] && [[ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]]; then
+            echo "🤖 **Auto-fixes**: Applied and committed" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "✨ **Auto-fixes**: No changes needed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ **Auto-fixes**: Only available on pull requests" >> $GITHUB_STEP_SUMMARY
+          fi
