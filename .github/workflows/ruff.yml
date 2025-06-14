@@ -38,6 +38,6 @@ jobs:
       - name: Commit and push changes
         if: github.event_name == 'pull_request'
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
+          git config --global user.name 'Pine-Ln'
+          git config --global user.email 'Chrysanthemum@wenturc.com'
           git diff --quiet || (git add -A && git commit -m "🤖 Auto-fix linting issues with Ruff" && git push)
