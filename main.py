@@ -35,7 +35,7 @@ class TurnRigPlugin(Star):
 
     Note:
         所有的消息都会被精心处理，确保完整转发喵！ 💫
-    """
+    """ 
 
     def __init__(self, context: Context, config=None):
         """
