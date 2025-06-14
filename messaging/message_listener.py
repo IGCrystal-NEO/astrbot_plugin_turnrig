@@ -172,12 +172,18 @@ class MessageListener:
                 message_id = event.message_obj.message_id
                 if not message_id:
                     # 生成临时ID防止处理失败喵～ 🔧
-                    message_id = f"temp_{int(time.time())}_{hash(str(event.message_str))}"
+                    message_id = (
+                        f"temp_{int(time.time())}_{hash(str(event.message_str))}"
+                    )
                     logger.warning(f"消息ID为空，使用临时ID: {message_id} 喵～ ⚠️")
             except AttributeError as e:
                 # 处理消息对象缺少属性的情况喵～ 😿
-                message_id = f"fallback_{int(time.time())}_{hash(str(event.message_str))}"
-                logger.warning(f"获取消息ID失败，使用fallback ID: {message_id}，错误: {e} 喵～ ⚠️")
+                message_id = (
+                    f"fallback_{int(time.time())}_{hash(str(event.message_str))}"
+                )
+                logger.warning(
+                    f"获取消息ID失败，使用fallback ID: {message_id}，错误: {e} 喵～ ⚠️"
+                )
 
             # 提取 OneBot V11 协议的原始字段喵～ 📋
             try:
@@ -189,7 +195,7 @@ class MessageListener:
                 onebot_fields = {
                     "message_type": "unknown",
                     "sub_type": "normal",
-                    "platform": "aiocqhttp"
+                    "platform": "aiocqhttp",
                 }
 
             # 初始化关键变量喵～ 🔢
@@ -208,32 +214,48 @@ class MessageListener:
                 sender_id = None
 
                 # 方法1: 从事件对象获取
-                if hasattr(event.message_obj, 'self_id'):
+                if hasattr(event.message_obj, "self_id"):
                     bot_self_id = str(event.message_obj.self_id)
-                elif hasattr(event.message_obj, 'raw_message') and hasattr(event.message_obj.raw_message, 'get'):
-                    bot_self_id = str(event.message_obj.raw_message.get('self_id', ''))
+                elif hasattr(event.message_obj, "raw_message") and hasattr(
+                    event.message_obj.raw_message, "get"
+                ):
+                    bot_self_id = str(event.message_obj.raw_message.get("self_id", ""))
 
                 # 方法2: 从多个地方获取发送者ID
-                if hasattr(event, 'sender_id'):
+                if hasattr(event, "sender_id"):
                     sender_id = str(event.sender_id)
-                elif hasattr(event.message_obj, 'sender') and hasattr(event.message_obj.sender, 'user_id'):
+                elif hasattr(event.message_obj, "sender") and hasattr(
+                    event.message_obj.sender, "user_id"
+                ):
                     sender_id = str(event.message_obj.sender.user_id)
-                elif hasattr(event.message_obj, 'raw_message') and hasattr(event.message_obj.raw_message, 'get'):
-                    sender_id = str(event.message_obj.raw_message.get('user_id', ''))
+                elif hasattr(event.message_obj, "raw_message") and hasattr(
+                    event.message_obj.raw_message, "get"
+                ):
+                    sender_id = str(event.message_obj.raw_message.get("user_id", ""))
 
-                logger.debug(f"自我消息检查喵: bot_self_id={bot_self_id}, sender_id={sender_id} 🔍")
+                logger.debug(
+                    f"自我消息检查喵: bot_self_id={bot_self_id}, sender_id={sender_id} 🔍"
+                )
 
                 # 如果发送者是机器人自己，直接跳过处理喵～ 🤖
                 if bot_self_id and sender_id and bot_self_id == sender_id:
-                    logger.warning(f"⚠️ 消息 {message_id} 是机器人自己发送的，跳过监听避免循环喵～ 🔄")
+                    logger.warning(
+                        f"⚠️ 消息 {message_id} 是机器人自己发送的，跳过监听避免循环喵～ 🔄"
+                    )
                     return
 
                 # 从插件上下文动态获取机器人ID进行额外检查喵～ 🤖
                 try:
-                    if hasattr(self.plugin, 'context'):
-                        dynamic_bot_id = str(self.plugin.context.get_platform("aiocqhttp").get_client().self_id)
+                    if hasattr(self.plugin, "context"):
+                        dynamic_bot_id = str(
+                            self.plugin.context.get_platform("aiocqhttp")
+                            .get_client()
+                            .self_id
+                        )
                         if sender_id and sender_id == dynamic_bot_id:
-                            logger.warning(f"⚠️ 消息 {message_id} 来自当前机器人账号 {sender_id}，跳过监听喵～ 🤖")
+                            logger.warning(
+                                f"⚠️ 消息 {message_id} 来自当前机器人账号 {sender_id}，跳过监听喵～ 🤖"
+                            )
                             return
                 except Exception as context_e:
                     logger.debug(f"无法从上下文获取机器人ID: {context_e} 喵～")
@@ -241,7 +263,9 @@ class MessageListener:
                 # 备用检查：从配置文件读取机器人ID列表进行检查喵～ 🛡️
                 bot_ids_from_config = self.plugin.config.get("bot_self_ids", [])
                 if sender_id and sender_id in bot_ids_from_config:
-                    logger.warning(f"⚠️ 消息 {message_id} 来自配置中的机器人账号 {sender_id}，跳过监听喵～ 🤖")
+                    logger.warning(
+                        f"⚠️ 消息 {message_id} 来自配置中的机器人账号 {sender_id}，跳过监听喵～ 🤖"
+                    )
                     return
 
             except Exception as e:
@@ -273,7 +297,9 @@ class MessageListener:
                 ]
                 for pattern in forwarded_patterns:
                     if pattern in plain_text:
-                        logger.debug(f"消息 {message_id} 疑似转发消息内容，跳过监听避免循环喵～ 🔄")
+                        logger.debug(
+                            f"消息 {message_id} 疑似转发消息内容，跳过监听避免循环喵～ 🔄"
+                        )
                         return
 
             logger.info(
@@ -399,7 +425,9 @@ class MessageListener:
                 should_monitor_user = self._should_monitor_user(task, event)
                 should_monitor_group_user = self._should_monitor_group_user(task, event)
 
-                logger.debug(f"任务 {task_id} 监听判断结果喵: 常规监听={should_monitor}, 用户监听={should_monitor_user}, 群内用户监听={should_monitor_group_user} 📊")
+                logger.debug(
+                    f"任务 {task_id} 监听判断结果喵: 常规监听={should_monitor}, 用户监听={should_monitor_user}, 群内用户监听={should_monitor_group_user} 📊"
+                )
 
                 if should_monitor or should_monitor_user or should_monitor_group_user:
                     task_matched = True
@@ -872,7 +900,9 @@ class MessageListener:
         group_id_str = str(group_id)
         sender_id_str = str(sender_id)
 
-        logger.debug(f"检查群内用户监听喵: 群{group_id_str}, 用户{sender_id_str}, 会话{session_id} 🔍")
+        logger.debug(
+            f"检查群内用户监听喵: 群{group_id_str}, 用户{sender_id_str}, 会话{session_id} 🔍"
+        )
 
         # 重要修改：同时检查纯群号和完整会话ID两种格式
         monitored_users = task.get("monitored_users_in_groups", {}).get(
@@ -887,7 +917,9 @@ class MessageListener:
             if monitored_users:
                 logger.debug(f"在完整会话ID {session_id} 中找到用户监听配置喵 📋")
             else:
-                logger.debug(f"群 {group_id_str} 或会话 {session_id} 没有配置特定用户监听喵 ❌")
+                logger.debug(
+                    f"群 {group_id_str} 或会话 {session_id} 没有配置特定用户监听喵 ❌"
+                )
 
         # 如果没有指定用户列表，则不监听任何人
         if not monitored_users:
@@ -900,9 +932,13 @@ class MessageListener:
         is_monitored = sender_id_str in [str(uid) for uid in monitored_users]
 
         if is_monitored:
-            logger.info(f"✅ 群 {group_id_str} 中的用户 {sender_id_str} 在监听列表中，应该监听此消息喵！ 🎯")
+            logger.info(
+                f"✅ 群 {group_id_str} 中的用户 {sender_id_str} 在监听列表中，应该监听此消息喵！ 🎯"
+            )
         else:
-            logger.debug(f"❌ 群 {group_id_str} 中的用户 {sender_id_str} 不在监听列表中，跳过此消息喵～ ⏭️")
+            logger.debug(
+                f"❌ 群 {group_id_str} 中的用户 {sender_id_str} 不在监听列表中，跳过此消息喵～ ⏭️"
+            )
 
         return is_monitored
 
@@ -1032,7 +1068,9 @@ class MessageListener:
             cache = self.plugin.message_cache[task_id][session_id]
             cache_capacity = max(max_messages * 3, 20)  # 缓存容量 = 阈值 × 3，最小20喵
 
-            logger.debug(f"开始智能缓存清理检查喵: 当前缓存 {len(cache)}，容量限制 {cache_capacity}，阈值 {max_messages}")
+            logger.debug(
+                f"开始智能缓存清理检查喵: 当前缓存 {len(cache)}，容量限制 {cache_capacity}，阈值 {max_messages}"
+            )
 
             # 分类消息：有效消息和空消息喵～
             valid_messages = []
@@ -1044,7 +1082,9 @@ class MessageListener:
                 else:
                     valid_messages.append(msg)
 
-            logger.debug(f"消息分类结果喵: 有效消息 {len(valid_messages)}，空消息 {len(empty_messages)}")
+            logger.debug(
+                f"消息分类结果喵: 有效消息 {len(valid_messages)}，空消息 {len(empty_messages)}"
+            )
 
             removed_count = 0
 
@@ -1083,7 +1123,9 @@ class MessageListener:
                     logger.debug(f"删除了 {actual_remove} 条旧的有效消息喵～")
 
             if removed_count > 0:
-                logger.info(f"智能缓存清理完成喵: 删除了 {removed_count} 条消息，当前缓存 {len(cache)} 条")
+                logger.info(
+                    f"智能缓存清理完成喵: 删除了 {removed_count} 条消息，当前缓存 {len(cache)} 条"
+                )
 
         except Exception as e:
             logger.error(f"智能缓存清理时出错喵: {e}")

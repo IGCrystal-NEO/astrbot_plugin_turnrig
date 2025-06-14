@@ -18,7 +18,7 @@ def update_readme():
         return False
 
     # 读取当前README内容
-    with open(readme_path, encoding='utf-8') as f:
+    with open(readme_path, encoding="utf-8") as f:
         content = f.read()
 
     # 获取新的占卜内容
@@ -63,17 +63,16 @@ def update_readme():
 
     # 插入新的占卜内容
     new_content = (
-        content[:insertion_pos] +
-        "\n\n" + fortune + "\n" +
-        content[insertion_pos:]
+        content[:insertion_pos] + "\n\n" + fortune + "\n" + content[insertion_pos:]
     )
 
     # 写入更新后的内容
-    with open(readme_path, 'w', encoding='utf-8') as f:
+    with open(readme_path, "w", encoding="utf-8") as f:
         f.write(new_content)
 
     print("README.md updated successfully with new fortune!")
     return True
+
 
 if __name__ == "__main__":
     success = update_readme()
