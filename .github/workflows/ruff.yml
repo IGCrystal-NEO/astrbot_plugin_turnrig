@@ -1,10 +1,14 @@
 name: Lint with Ruff
-
 on:
   push:
     branches:
       - main
   pull_request:
+
+# 添加明确的权限设置
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   lint:
@@ -12,9 +16,11 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}  # Checkout the PR branch
+          # 改进分支引用逻辑
+          ref: ${{ github.head_ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,18 +32,43 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff
 
-      - name: Run Ruff (Check Only)
-        continue-on-error: true
+      - name: Run Ruff Check
         run: |
           ruff check . --output-format=github
 
-      - name: Run Ruff (Fix Issues)
+      - name: Run Ruff Fix
         run: |
           ruff check --fix .
 
-      - name: Commit and push changes
-        if: github.event_name == 'pull_request'
+      - name: Check for changes
+        id: check_changes
         run: |
-          git config --global user.name 'Pine-Ln'
-          git config --global user.email 'Chrysanthemum@wenturc.com'
-          git diff --quiet || (git add -A && git commit -m "🤖 Auto-fix linting issues with Ruff" && git push)
+          if git diff --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes needed! 🎉"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "Found changes that need to be committed."
+          fi
+
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changes == 'true' && github.event_name == 'pull_request'
+        run: |
+          git config --local user.name 'Pine-Ln'
+          git config --local user.email 'Chrysanthemum@wenturc.com'
+          git add -A
+          git commit -m "🤖 Auto-fix linting issues with Ruff"
+          
+          # 更详细的推送错误处理
+          echo "Attempting to push changes..."
+          if ! git push origin HEAD:${{ github.head_ref }}; then
+            echo "❌ Push failed! Checking possible causes:"
+            echo "1. Branch protection rules"
+            echo "2. Insufficient permissions"
+            echo "3. Token issues"
+            echo "Current branch: $(git branch --show-current)"
+            echo "Remote URL: $(git remote get-url origin)"
+            exit 1
+          else
+            echo "✅ Successfully pushed changes!"
+          fi 
