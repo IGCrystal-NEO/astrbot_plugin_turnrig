@@ -73,11 +73,11 @@ body:
     id: platform
     attributes:
       label: 🤖 平台类型
-      description: 在哪个平台上遇到的问题喵？
+      description: 在哪个协议端上遇到的问题喵？
       options:
-        - QQ (aiocqhttp)
-        - 其他平台
-        - 不确定
+        - NapCat
+        - LLOneBot
+        - 其他
     validations:
       required: true
 
