@@ -76,7 +76,7 @@ body:
       description: 在哪个协议端上遇到的问题喵？
       options:
         - NapCat
-        - LLOneBot
+        - Lagrange
         - 其他
     validations:
       required: true
