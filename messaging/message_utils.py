@@ -25,8 +25,14 @@ async def async_detect_message_field(data: dict, platform_name: str = None) -> s
 
     # 定义检测字段的优先级列表喵～ 📋
     field_candidates = [
-        "message", "messages", "data", "content",
-        "msg", "msgs", "items", "nodes"
+        "message",
+        "messages",
+        "data",
+        "content",
+        "msg",
+        "msgs",
+        "items",
+        "nodes",
     ]
 
     # 平台特定字段检测喵～ 🎯
@@ -50,19 +56,25 @@ async def async_detect_message_field(data: dict, platform_name: str = None) -> s
 
                 # 如果是字符串且非空，也可能是消息字段喵～
                 elif isinstance(field_value, str) and field_value.strip():
-                    logger.debug(f"字段 '{field_name}' 是非空字符串，确认为消息字段喵 ✨")
+                    logger.debug(
+                        f"字段 '{field_name}' 是非空字符串，确认为消息字段喵 ✨"
+                    )
                     return field_name
 
                 # 如果是字典且非空，可能包含嵌套消息喵～
                 elif isinstance(field_value, dict) and len(field_value) > 0:
-                    logger.debug(f"字段 '{field_name}' 是非空字典，可能包含嵌套消息喵 🔄")
+                    logger.debug(
+                        f"字段 '{field_name}' 是非空字典，可能包含嵌套消息喵 🔄"
+                    )
                     return field_name
 
     logger.debug("未检测到有效的消息字段喵 😿")
     return None
 
 
-async def async_detect_message_content_field(msg_data: dict, platform_name: str = None) -> str:
+async def async_detect_message_content_field(
+    msg_data: dict, platform_name: str = None
+) -> str:
     """
     异步智能检测消息内容字段名称喵～ 📝
     用于检测消息对象内部的内容字段
@@ -82,14 +94,14 @@ async def async_detect_message_content_field(msg_data: dict, platform_name: str 
         return None
 
     # 内容字段候选列表喵～ 📋
-    content_candidates = [
-        "content", "message", "data", "text", "msg"
-    ]
+    content_candidates = ["content", "message", "data", "text", "msg"]
 
     # 平台特定检测优化喵～ 🎯
     if platform_name == "aiocqhttp":
         # OneBot 平台特殊处理
-        content_candidates = ["content", "message"] + [f for f in content_candidates if f not in ["content", "message"]]
+        content_candidates = ["content", "message"] + [
+            f for f in content_candidates if f not in ["content", "message"]
+        ]
 
     logger.debug(f"开始检测消息内容字段，候选字段: {content_candidates} 🔍")
 
@@ -102,17 +114,23 @@ async def async_detect_message_content_field(msg_data: dict, platform_name: str 
             if field_value is not None:
                 # 列表类型很可能是消息内容喵～
                 if isinstance(field_value, list):
-                    logger.debug(f"内容字段 '{field_name}' 是列表类型，确认为内容字段喵 ✨")
+                    logger.debug(
+                        f"内容字段 '{field_name}' 是列表类型，确认为内容字段喵 ✨"
+                    )
                     return field_name
 
                 # 非空字符串也是有效内容喵～
                 elif isinstance(field_value, str) and field_value.strip():
-                    logger.debug(f"内容字段 '{field_name}' 是非空字符串，确认为内容字段喵 ✨")
+                    logger.debug(
+                        f"内容字段 '{field_name}' 是非空字符串，确认为内容字段喵 ✨"
+                    )
                     return field_name
 
                 # 字典可能包含复杂内容结构喵～
                 elif isinstance(field_value, dict) and len(field_value) > 0:
-                    logger.debug(f"内容字段 '{field_name}' 是非空字典，确认为内容字段喵 ✨")
+                    logger.debug(
+                        f"内容字段 '{field_name}' 是非空字典，确认为内容字段喵 ✨"
+                    )
                     return field_name
 
     logger.debug("未检测到有效的消息内容字段喵 😿")
@@ -159,7 +177,9 @@ async def fetch_forward_message_nodes(forward_id, event):
                 return None
 
             # 智能检测消息字段喵～ 🔍
-            message_field = await async_detect_message_field(forward_response, event.get_platform_name())
+            message_field = await async_detect_message_field(
+                forward_response, event.get_platform_name()
+            )
             if message_field and isinstance(forward_response[message_field], list):
                 messages = forward_response[message_field]
                 logger.debug(f"智能检测到消息字段: {message_field} ✨")
@@ -247,7 +267,9 @@ async def fetch_forward_message_nodes(forward_id, event):
 
                         # 智能检测消息内容字段喵～ 🔍
                         if not content_processed:
-                            content_field = await async_detect_message_content_field(msg, event.get_platform_name())
+                            content_field = await async_detect_message_content_field(
+                                msg, event.get_platform_name()
+                            )
                             if content_field:
                                 message_content = msg[content_field]
                                 logger.debug(f"智能检测到内容字段: {content_field} ✨")
@@ -255,23 +277,30 @@ async def fetch_forward_message_nodes(forward_id, event):
                                     for msg_part in message_content:
                                         if isinstance(msg_part, dict):
                                             if msg_part.get("type") == "text":
-                                                text_content = msg_part.get("data", {}).get(
-                                                    "text", ""
-                                                )
+                                                text_content = msg_part.get(
+                                                    "data", {}
+                                                ).get("text", "")
                                                 if text_content:
                                                     node["data"]["content"].append(
                                                         {
                                                             "type": "text",
-                                                            "data": {"text": text_content},
+                                                            "data": {
+                                                                "text": text_content
+                                                            },
                                                         }
                                                     )
                                                     content_processed = True
                                         else:
                                             node["data"]["content"].append(msg_part)
                                             content_processed = True
-                                elif isinstance(message_content, str) and message_content:
+                                elif (
+                                    isinstance(message_content, str) and message_content
+                                ):
                                     node["data"]["content"].append(
-                                        {"type": "text", "data": {"text": message_content}}
+                                        {
+                                            "type": "text",
+                                            "data": {"text": message_content},
+                                        }
                                     )
                                     content_processed = True
                                 content_processed = True
@@ -332,7 +361,9 @@ async def fetch_message_detail(message_id, event):
         logger.debug(f"获取到消息详情喵: {response} 📋")
 
         # 智能检测并处理转发消息喵～ 📤
-        message_field = await async_detect_message_field(response, event.get_platform_name())
+        message_field = await async_detect_message_field(
+            response, event.get_platform_name()
+        )
         if message_field:
             message_list = response[message_field]
             logger.debug(f"智能检测到消息字段: {message_field} ✨")
