@@ -40,32 +40,27 @@ async def async_detect_message_field(data: dict, platform_name: str = None) -> s
         # OneBot 平台优先检测 message 字段
         field_candidates = ["message"] + [f for f in field_candidates if f != "message"]
 
-    logger.debug(f"开始智能检测消息字段，候选字段: {field_candidates} 🔍")
+    logger.debug(f"智能检测消息字段，平台: {platform_name} 🔍")
 
     for field_name in field_candidates:
         if field_name in data:
             field_value = data[field_name]
-            logger.debug(f"发现字段 '{field_name}': 类型={type(field_value)} 📋")
 
             # 检查字段值是否为有效的消息内容喵～ ✅
             if field_value is not None:
                 # 如果是列表且非空，很可能是消息字段喵～
                 if isinstance(field_value, list) and len(field_value) > 0:
-                    logger.debug(f"字段 '{field_name}' 是非空列表，确认为消息字段喵 ✨")
+                    logger.debug(f"检测到消息字段 '{field_name}' (列表类型) ✨")
                     return field_name
 
                 # 如果是字符串且非空，也可能是消息字段喵～
                 elif isinstance(field_value, str) and field_value.strip():
-                    logger.debug(
-                        f"字段 '{field_name}' 是非空字符串，确认为消息字段喵 ✨"
-                    )
+                    logger.debug(f"检测到消息字段 '{field_name}' (字符串类型) ✨")
                     return field_name
 
                 # 如果是字典且非空，可能包含嵌套消息喵～
                 elif isinstance(field_value, dict) and len(field_value) > 0:
-                    logger.debug(
-                        f"字段 '{field_name}' 是非空字典，可能包含嵌套消息喵 🔄"
-                    )
+                    logger.debug(f"检测到消息字段 '{field_name}' (字典类型) ✨")
                     return field_name
 
     logger.debug("未检测到有效的消息字段喵 😿")
@@ -103,34 +98,27 @@ async def async_detect_message_content_field(
             f for f in content_candidates if f not in ["content", "message"]
         ]
 
-    logger.debug(f"开始检测消息内容字段，候选字段: {content_candidates} 🔍")
+    logger.debug(f"检测消息内容字段，平台: {platform_name} 🔍")
 
     for field_name in content_candidates:
         if field_name in msg_data:
             field_value = msg_data[field_name]
-            logger.debug(f"发现内容字段 '{field_name}': 类型={type(field_value)} 📋")
 
             # 检查是否为有效的内容字段喵～ ✅
             if field_value is not None:
                 # 列表类型很可能是消息内容喵～
                 if isinstance(field_value, list):
-                    logger.debug(
-                        f"内容字段 '{field_name}' 是列表类型，确认为内容字段喵 ✨"
-                    )
+                    logger.debug(f"检测到内容字段 '{field_name}' (列表类型) ✨")
                     return field_name
 
                 # 非空字符串也是有效内容喵～
                 elif isinstance(field_value, str) and field_value.strip():
-                    logger.debug(
-                        f"内容字段 '{field_name}' 是非空字符串，确认为内容字段喵 ✨"
-                    )
+                    logger.debug(f"检测到内容字段 '{field_name}' (字符串类型) ✨")
                     return field_name
 
                 # 字典可能包含复杂内容结构喵～
                 elif isinstance(field_value, dict) and len(field_value) > 0:
-                    logger.debug(
-                        f"内容字段 '{field_name}' 是非空字典，确认为内容字段喵 ✨"
-                    )
+                    logger.debug(f"检测到内容字段 '{field_name}' (字典类型) ✨")
                     return field_name
 
     logger.debug("未检测到有效的消息内容字段喵 😿")
@@ -170,7 +158,9 @@ async def fetch_forward_message_nodes(forward_id, event):
             forward_response = await client.api.call_action(
                 "get_forward_msg", **forward_payload
             )
-            logger.info(f"成功通过get_forward_msg获取转发消息喵: {forward_response} ✅")
+            logger.debug(
+                f"成功通过get_forward_msg获取转发消息喵: {forward_response} ✅"
+            )
 
             if not forward_response:
                 logger.warning(f"get_forward_msg返回空结果喵: {forward_response} 😿")
@@ -183,7 +173,7 @@ async def fetch_forward_message_nodes(forward_id, event):
             if message_field and isinstance(forward_response[message_field], list):
                 messages = forward_response[message_field]
                 logger.debug(f"智能检测到消息字段: {message_field} ✨")
-                logger.info(f"从get_forward_msg获取到 {len(messages)} 条消息喵 📊")
+                logger.debug(f"从get_forward_msg获取到 {len(messages)} 条消息喵 📊")
 
                 # 转换为节点格式喵～ 🔄
                 nodes = []
@@ -208,7 +198,7 @@ async def fetch_forward_message_nodes(forward_id, event):
                             },
                         }
 
-                        logger.info(
+                        logger.debug(
                             f"处理节点 {i + 1}: 用户={node['data']['name']}, 内容数量={len(node['data']['content'])} 📋"
                         )
                         nodes.append(node)
