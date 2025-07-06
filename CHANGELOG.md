@@ -188,3 +188,22 @@
 - pull request #10 from IGCrystal/perf-1
 - update changelog for v1.6.1
 
+
+
+## [v1.6.3] - 2025-07-06
+
+### Added
+- async intelligent message field detection functions
+
+### Changed
+- metadata.yaml
+- README.md
+- pull request #49 from WentUrc/copilot/fix-31acbeb0-ef9f-4b07-bd3c-8264fcdef39f
+- 修改部分日志级别
+- verbose logging in forward message retrieval
+- plan
+- pull request #48 from WentUrc/pre-commit-ci-update-config
+- bug_report.yml
+- pull request #44 from WentUrc/pre-commit-ci-update-config
+- update changelog for v1.6.2
+
