@@ -85,7 +85,7 @@ body:
     id: qq-version
     attributes:
       label: 📱 QQ版本
-      description: 如果是QQ平台，请提供QQ版本信息喵～
+      description: 请提供QQ版本信息喵～
       placeholder: 例如：9.0.30.xxx (手机QQ) 或 9.7.x.xxx (PC QQ)
 
   - type: textarea
