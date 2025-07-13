@@ -6,7 +6,7 @@ outline: deep
 
 > [!TIP]
 > 这是来自 AstrBot 的插件开发文档。
-> 此处更新可能不及时，请以 AstrBot 的文档为准。
+> 此处更新可能不及时，请以[AstrBot 的文档](https://docs.astrbot.app/dev/star/plugin.html)为准。
 
 # 插件开发
 
