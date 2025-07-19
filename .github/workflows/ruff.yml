@@ -98,8 +98,8 @@ jobs:
       if: github.event_name == 'pull_request' && steps.check_changes.outputs.has_changes == 'true'
       run: |
         # 配置 git
-        git config --local user.name 'Pine-Ln'
-        git config --local user.email 'Chrysanthemum@wenturc.com'
+        git config --local user.name 'IGCrystal-Ghost'
+        git config --local user.email 'cacheigcrystal@gmail.com'
         
         # 暂存所有更改
         git add -A
