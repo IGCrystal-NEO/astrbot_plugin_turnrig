@@ -113,8 +113,8 @@ jobs:
         # 更新 metadata.yaml 中的版本号
         sed -i "s/version: .*/version: \"$VERSION\"/" metadata.yaml
         
-        git config --local user.email "Chrysanthemum@wenturc.com"
-        git config --local user.name "Pine-Ln"
+        git config --local user.email "cacheigcrystal@gmail.com"
+        git config --local user.name "IGCrystal-Ghost"
         git add CHANGELOG.md metadata.yaml
         git commit -m "📃 docs: update changelog for v${CLEAN_VERSION}" || exit 0
         git push origin main
