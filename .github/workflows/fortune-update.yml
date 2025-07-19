@@ -38,7 +38,7 @@ jobs:
     - name: Commit and push if changes
       if: steps.check_changes.outputs.changes == 'true'
       run: |
-        git config --local user.email "tr@wenturc.com"
+        git config --local user.email "cacheigcrystal@gmail.com"
         git config --local user.name "麦咪占卜师"
         git add README.md
         git commit -m "🔮 更新麦咪的数字占卜 - $(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M CST')"
