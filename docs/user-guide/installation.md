@@ -7,7 +7,7 @@
 在开始之前，请确保你已经：
 
 - ✅ 安装并配置了 AstrBot 3.x 或更高版本
-- ✅ 拥有至少一个QQ机器人账号（推荐使用NapCat，其次LLOneBot）
+- ✅ 拥有至少一个QQ机器人账号（推荐使用NapCat，其次Lagarange）
 - ✅ 对AstrBot的基本操作有一定了解
 
 ## 🚀 快速安装
