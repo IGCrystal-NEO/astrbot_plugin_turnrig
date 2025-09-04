@@ -25,7 +25,7 @@ def update_readme():
     fortune = get_fortune()
 
     # 定义标记位置
-    start_marker = "> 一个消息监听与转发插件，支持多种消息类型喵～"
+    start_marker = "> 一个消息监听与转发插件，支持多种消息类型"
     fortune_start = "## 🔮 麦咪的数字占卜"
 
     # 查找插入位置
