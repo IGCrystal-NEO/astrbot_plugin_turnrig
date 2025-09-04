@@ -3,7 +3,7 @@ name: 活跃度更新
 on:
   schedule:
     # 每小时运行一次
-    - cron: '0 * * * *'
+    - cron: '0 0 * * *'
   workflow_dispatch: # 允许手动触发
 
 jobs:
