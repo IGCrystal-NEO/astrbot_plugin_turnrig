@@ -18,8 +18,8 @@ from .messaging.message_listener import MessageListener
     "astrbot_plugin_turnrig",
     "IGCrystal",
     "监听并转发消息的可爱插件喵～ ฅ(^•ω•^ฅ",
-    "1.6.1",
-    "https://github.com/IGCrystal/astrbot_plugin_turnrig",
+    "1.6.4",
+    "https://github.com/wenturc/astrbot_plugin_turnrig",
 )
 class TurnRigPlugin(Star):
     """
@@ -103,6 +103,19 @@ class TurnRigPlugin(Star):
         # 确保配置有bot_self_ids字段喵～ 🤖
         if "bot_self_ids" not in self.config:
             self.config["bot_self_ids"] = []
+
+        # 确保可配置的单条发送开关存在，默认关闭
+        if "send_single_messages" not in self.config:
+            self.config["send_single_messages"] = False
+
+        # 如果 AstrBot 通过 __init__ 传入了配置，则覆盖本地对应开关
+        try:
+            if config and isinstance(config, dict) and "send_single_messages" in config:
+                self.config["send_single_messages"] = bool(
+                    config.get("send_single_messages", False)
+                )
+        except Exception:
+            pass
 
         # 如果没有任何任务，创建一个自动捕获所有消息的测试任务喵～ 🧪
         if not self.config["tasks"]:

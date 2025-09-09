@@ -883,7 +883,11 @@ class MessageSender:
             return None
 
     async def send_with_fallback(
-        self, target_session: str, nodes_list: list[dict], task_id: str = None
+        self,
+        target_session: str,
+        nodes_list: list[dict],
+        task_id: str = None,
+        header_text: str | None = None,
     ) -> bool:
         """
         当合并转发失败时，尝试直接发送消息喵～ 🔄
@@ -922,19 +926,21 @@ class MessageSender:
                 self._send_semaphore = asyncio.Semaphore(2)  # 最多同时发送2条消息喵
 
             # 发送消息前提示喵～ 📢
-            header_text = f"[无法使用合并转发，将直接发送 {len(nodes_list)} 条消息喵～]"
+            if header_text is None:
+                header_text = f"[无法使用合并转发，将直接发送 {len(nodes_list)} 条消息喵～]"
 
-            try:
-                if "GroupMessage" in target_session:
-                    await client.call_action(
-                        "send_group_msg", group_id=int(target_id), message=header_text
-                    )
-                else:
-                    await client.call_action(
-                        "send_private_msg", user_id=int(target_id), message=header_text
-                    )
-            except Exception as e:
-                logger.warning(f"任务 {task_id}: 发送提示消息失败喵: {e} 😿")
+            if header_text and str(header_text).strip():
+                try:
+                    if "GroupMessage" in target_session:
+                        await client.call_action(
+                            "send_group_msg", group_id=int(target_id), message=header_text
+                        )
+                    else:
+                        await client.call_action(
+                            "send_private_msg", user_id=int(target_id), message=header_text
+                        )
+                except Exception as e:
+                    logger.warning(f"任务 {task_id}: 发送提示消息失败喵: {e} 😿")
 
             # 为每个节点生成唯一ID并按顺序逐条发送消息喵～ 📋
             successful_nodes = 0
@@ -1159,15 +1165,33 @@ class MessageSender:
 
                 return success
 
-            # 为普通消息创建消息链并发送
-            message = MessageChain(message_parts)
+            # 直接使用 OneBot 消息段发送（更稳定）
+            try:
+                segments = [{"type": "text", "data": {"text": f"{sender_name}:\n"}}]
+                segments.extend(content)
 
-            # 使用重试机制发送
-            max_retries = 2
-            retry_count = 0
+                if "GroupMessage" in target_session:
+                    await client.call_action(
+                        "send_group_msg", group_id=int(target_id), message=segments
+                    )
+                else:
+                    await client.call_action(
+                        "send_private_msg", user_id=int(target_id), message=segments
+                    )
 
-            while retry_count <= max_retries:
+                logger.info(
+                    f"任务 {task_id}: 成功发送消息到 {target_session} (OneBot 段)"
+                )
+
+                if node_id:
+                    self._add_sent_message(target_session, node_id)
+                return True
+            except Exception as e2:
+                logger.warning(f"任务 {task_id}: OneBot 段发送失败，尝试 MessageChain 备选: {e2}")
+
+                # 备选：尝试使用 MessageChain 发送
                 try:
+                    message = MessageChain(message_parts)
                     if "GroupMessage" in target_session:
                         await self.plugin.context.send_message(
                             f"aiocqhttp:GroupMessage:{target_id}", message
@@ -1176,62 +1200,12 @@ class MessageSender:
                         await self.plugin.context.send_message(
                             f"aiocqhttp:PrivateMessage:{target_id}", message
                         )
-
-                    logger.info(f"任务 {task_id}: 成功发送消息到 {target_session}")
-
-                    # 标记为已发送
                     if node_id:
                         self._add_sent_message(target_session, node_id)
-
                     return True
-
-                except Exception as e:
-                    retry_count += 1
-                    logger.warning(
-                        f"任务 {task_id}: 使用MessageChain发送消息失败(尝试 {retry_count}/{max_retries + 1}): {e}"
-                    )
-
-                    # 检查是否因为频率限制导致的失败
-                    if "频率限制" in str(e) or "rate limit" in str(e).lower():
-                        retry_wait = 2 * retry_count  # 根据重试次数增加等待时间
-                        logger.warning(
-                            f"任务 {task_id}: 检测到频率限制，等待 {retry_wait} 秒后重试"
-                        )
-                        await asyncio.sleep(retry_wait)
-                    else:
-                        await asyncio.sleep(1)
-
-                    # 如果是最后一次重试，尝试传统方法
-                    if retry_count > max_retries:
-                        break
-
-            # 使用传统方法作为备选
-            logger.info(f"任务 {task_id}: 尝试使用传统方法发送")
-            try:
-                message = [{"type": "text", "data": {"text": f"{sender_name}:\n"}}]
-                message.extend(content)
-
-                if "GroupMessage" in target_session:
-                    await client.call_action(
-                        "send_group_msg", group_id=int(target_id), message=message
-                    )
-                else:
-                    await client.call_action(
-                        "send_private_msg", user_id=int(target_id), message=message
-                    )
-
-                logger.info(
-                    f"任务 {task_id}: 成功使用传统方法发送消息到 {target_session}"
-                )
-
-                # 标记为已发送
-                if node_id:
-                    self._add_sent_message(target_session, node_id)
-
-                return True
-            except Exception as e2:
-                logger.error(f"任务 {task_id}: 传统方法发送也失败: {e2}")
-                return False
+                except Exception as e3:
+                    logger.error(f"任务 {task_id}: MessageChain 备选也失败: {e3}")
+                    return False
         except Exception as e:
             logger.error(f"任务 {task_id}: 发送节点内容失败: {e}")
             logger.error(traceback.format_exc())

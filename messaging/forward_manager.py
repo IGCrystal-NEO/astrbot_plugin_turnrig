@@ -337,6 +337,32 @@ class ForwardManager:
 
                         # 根据平台选择发送方式喵～ 🎯
                         if target_platform == "aiocqhttp":
+                            # 若启用单条消息模式，则跳过合并转发，直接逐条发送
+                            if self.plugin.config.get("send_single_messages", False):
+                                logger.info(
+                                    f"send_single_messages 已启用，跳过合并转发，改用单条发送 -> {target_session}"
+                                )
+                                # 根据用户偏好：默认不发送提示头
+                                header_text = ""
+                                single_ok = await self.message_sender.send_with_fallback(
+                                    target_session, nodes_list, None, header_text
+                                )
+                                if single_ok:
+                                    self.cache_manager.remove_failed_message(
+                                        target_session, task_id, session_id
+                                    )
+                                    logger.info(
+                                        f"单条消息模式下，成功将消息发送到 {target_session} 喵～ ✅"
+                                    )
+                                else:
+                                    self.cache_manager.add_failed_message(
+                                        target_session, task_id, session_id
+                                    )
+                                    logger.error(
+                                        f"单条消息模式发送失败: {target_session} 😿"
+                                    )
+                                continue
+
                             logger.debug(
                                 f"开始尝试发送QQ合并转发消息到 {target_session} 喵～ 📡"
                             )
