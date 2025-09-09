@@ -207,3 +207,39 @@
 - pull request #44 from WentUrc/pre-commit-ci-update-config
 - update changelog for v1.6.2
 
+
+
+## [v1.6.4] - 2025-09-09
+
+### Added
+- 将单条消息发送可配置
+
+### Changed
+- pull request #62 from WentUrc/pre-commit-ci-update-config
+- fortune-update.yml
+- coding-style.md
+- workflow to '活跃度更新'
+- workflow to trigger only on 'main' branch
+- README content and remove filler text
+- pull request #61 from WentUrc/pre-commit-ci-update-config
+- pull request #60 from WentUrc/pre-commit-ci-update-config
+- pull request #58 from WentUrc/pre-commit-ci-update-config
+- pull request #56 from WentUrc/pre-commit-ci-update-config
+- README.md
+- pull request #54 from WentUrc/pre-commit-ci-update-config
+- installation.md
+- pull request #53 from WentUrc/pre-commit-ci-update-config
+- pull request #52 from WentUrc/pre-commit-ci-update-config
+- ruff.yml
+- changelog.yml
+- pull request #51 from WentUrc/pre-commit-ci-update-config
+- plugin-development.md
+- pull_request_template.md
+- bug_report.yml
+- pull request #50 from WentUrc/pre-commit-ci-update-config
+- update changelog for v1.6.3
+
+### Fixed
+- ruff fix
+- start_marker text in update_readme_fortune.py
+
