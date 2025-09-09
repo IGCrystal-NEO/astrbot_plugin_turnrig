@@ -344,8 +344,10 @@ class ForwardManager:
                                 )
                                 # 根据用户偏好：默认不发送提示头
                                 header_text = ""
-                                single_ok = await self.message_sender.send_with_fallback(
-                                    target_session, nodes_list, None, header_text
+                                single_ok = (
+                                    await self.message_sender.send_with_fallback(
+                                        target_session, nodes_list, None, header_text
+                                    )
                                 )
                                 if single_ok:
                                     self.cache_manager.remove_failed_message(

@@ -927,17 +927,23 @@ class MessageSender:
 
             # 发送消息前提示喵～ 📢
             if header_text is None:
-                header_text = f"[无法使用合并转发，将直接发送 {len(nodes_list)} 条消息喵～]"
+                header_text = (
+                    f"[无法使用合并转发，将直接发送 {len(nodes_list)} 条消息喵～]"
+                )
 
             if header_text and str(header_text).strip():
                 try:
                     if "GroupMessage" in target_session:
                         await client.call_action(
-                            "send_group_msg", group_id=int(target_id), message=header_text
+                            "send_group_msg",
+                            group_id=int(target_id),
+                            message=header_text,
                         )
                     else:
                         await client.call_action(
-                            "send_private_msg", user_id=int(target_id), message=header_text
+                            "send_private_msg",
+                            user_id=int(target_id),
+                            message=header_text,
                         )
                 except Exception as e:
                     logger.warning(f"任务 {task_id}: 发送提示消息失败喵: {e} 😿")
@@ -1187,7 +1193,9 @@ class MessageSender:
                     self._add_sent_message(target_session, node_id)
                 return True
             except Exception as e2:
-                logger.warning(f"任务 {task_id}: OneBot 段发送失败，尝试 MessageChain 备选: {e2}")
+                logger.warning(
+                    f"任务 {task_id}: OneBot 段发送失败，尝试 MessageChain 备选: {e2}"
+                )
 
                 # 备选：尝试使用 MessageChain 发送
                 try:
