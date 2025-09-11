@@ -102,7 +102,7 @@ def get_fortune():
     if special:
         fortune_text += f"\n🌟 **特殊预言**: {special}"
 
-    fortune_text += "\n\n*每小时更新一次，仅供娱乐喵～* 🐱"
+    fortune_text += "\n\n*每天更新一次，仅供娱乐喵～* 🐱"
 
     return fortune_text
 
