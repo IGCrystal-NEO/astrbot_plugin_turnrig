@@ -1,5 +1,5 @@
 name: 📖 文档改进
-description: 报告文档问题或建议文档改进喵～
+description: 报告文档问题或建议文档改进
 title: "[DOCS] "
 labels: ["documentation", "改进"]
 assignees: []
@@ -8,13 +8,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢你帮助改善麦咪的文档喵♡～ 好的文档让更多人能享受插件的便利！✨
+        感谢你帮助改善我们的文档喵 好的文档让更多人能享受插件的便利！✨
 
   - type: dropdown
     id: doc-type
     attributes:
       label: 📋 文档类型
-      description: 这是关于哪种类型的文档喵？
+      description: 这是关于哪种类型的文档？
       options:
         - README.md
         - 安装指南
@@ -33,7 +33,7 @@ body:
     id: issue-type
     attributes:
       label: 🏷️ 问题类型
-      description: 这是什么类型的文档问题喵？
+      description: 这是什么类型的文档问题？
       options:
         - 内容错误
         - 信息过时
@@ -51,7 +51,7 @@ body:
     id: current-content
     attributes:
       label: 📄 当前内容
-      description: 请指出有问题的文档内容或章节喵～
+      description: 请指出有问题的文档内容或章节
       placeholder: |
         请复制有问题的文档片段，或者描述在哪个位置...
         例如：README.md中的"配置示例"部分，第XX行...
@@ -60,7 +60,7 @@ body:
     id: problem-description
     attributes:
       label: ❓ 问题描述
-      description: 详细描述文档的问题喵～
+      description: 详细描述文档的问题
       placeholder: |
         例如：
         - 这个配置示例已经过时了
@@ -73,7 +73,7 @@ body:
     id: suggested-improvement
     attributes:
       label: 💡 改进建议
-      description: 你建议如何改进这部分文档喵？
+      description: 你建议如何改进这部分文档？
       placeholder: |
         例如：
         - 更新配置示例为最新版本
@@ -86,7 +86,7 @@ body:
     id: user-impact
     attributes:
       label: 👥 用户影响
-      description: 这个文档问题会如何影响用户喵？
+      description: 这个文档问题会如何影响用户？
       placeholder: |
         例如：
         - 新用户按照这个示例配置会失败
@@ -97,7 +97,7 @@ body:
     id: priority
     attributes:
       label: 📈 优先级
-      description: 你认为这个文档问题的优先级如何喵？
+      description: 你认为这个文档问题的优先级如何？
       options:
         - 高 (严重影响使用)
         - 中 (建议尽快修复)
@@ -109,14 +109,14 @@ body:
     id: additional-context
     attributes:
       label: 📎 其他信息
-      description: 还有什么其他相关的信息想告诉麦咪的吗？
+      description: 还有什么其他相关的信息想告诉我们的吗？
       placeholder: 例如：相关的截图、参考资料、或者其他背景信息...
 
   - type: checkboxes
     id: willingness
     attributes:
       label: 🤝 参与意愿
-      description: 你愿意参与文档改进吗喵？
+      description: 你愿意参与文档改进吗？
       options:
         - label: 我愿意帮助编写或修改文档
         - label: 我可以提供更多的使用示例
@@ -127,7 +127,7 @@ body:
     id: terms
     attributes:
       label: ✅ 确认事项
-      description: 请确认以下事项喵～
+      description: 请确认以下事项
       options:
         - label: 我已经检查了最新版本的文档
           required: true
