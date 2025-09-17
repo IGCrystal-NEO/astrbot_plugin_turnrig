@@ -1,6 +1,6 @@
 # 🔧 故障排除
 
-麦咪遇到问题了吗？不用担心，这里有完整的解决方案喵♡～
+遇到问题了吗？不用担心，这里有完整的解决方案
 
 ## 🚨 常见问题与解决方案
 
@@ -233,7 +233,7 @@
 **常见日志模式**:
 ```
 [INFO] 转发侦听器插件初始化完成 ✅
-[INFO] 已加载 2 个转发任务喵～ 📊
+[INFO] 已加载 2 个转发任务 📊
 [ERROR] 处理消息时出错喵: [错误详情] 😿
 [WARNING] 清理临时文件失败喵: [文件路径] 😿
 ```
@@ -276,7 +276,7 @@
 5. AstrBot版本和插件版本
 
 ### 联系方式
-- GitHub: [提交Issue](https://github.com/WentUrc/astrbot_plugin_turnrig/issues)
+- GitHub: [提交Issue](https://github.com/IGCrystal-NEO/astrbot_plugin_turnrig/issues)
 - 在Issue中使用提供的模板
 
 ### 临时解决方案
@@ -313,4 +313,4 @@ data/plugins_data/astrbot_plugin_turnrig/config.json
 
 ---
 
-记住，大多数问题都有简单的解决方案喵♡～ 如果遇到问题，先检查基础配置，再考虑复杂的故障排除步骤！✨ 
+记住，大多数问题都有简单的解决方案 如果遇到问题，先检查基础配置，再考虑复杂的故障排除步骤！✨ 
