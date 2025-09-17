@@ -1,6 +1,6 @@
 # 📦 安装指南
 
-欢迎使用麦咪的转发插件喵♡～ 这里会详细教你如何安装和初始化插件！
+欢迎使用 **Turnrig** 插件喵 这里会详细教你如何安装和初始化插件！
 
 ## 🎯 前提条件
 
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 ### 方法3: 下载压缩包安装
 
-1. 访问 [GitHub Releases](https://github.com/WentUrc/astrbot_plugin_turnrig/releases)
+1. 访问 [GitHub Releases](https://github.com/IGCrystal-NEO/astrbot_plugin_turnrig/releases)
 2. 下载最新版本的压缩包
 3. 解压到 `AstrBot/data/plugins/` 目录下
 4. 重命名文件夹为 `astrbot_plugin_turnrig`
@@ -49,7 +49,7 @@ pip install -r requirements.txt
 安装完成后：
 
 1. 重启AstrBot
-2. 在WebUI的「插件管理」页面找到「麦咪转发插件」
+2. 在WebUI的「插件管理」页面找到「turnrig」
 3. 点击「启用」按钮
 4. 确认插件状态显示为「运行中」
 
@@ -88,7 +88,7 @@ pip install -r requirements.txt
 
 在AstrBot日志中应该能看到：
 ```
-[Plug] [INFO] 麦咪的转发插件已启动喵♡～ ✨
+[Plug] [INFO] turnrig插件已启动 ✨
 ```
 
 ### 2. 发送测试命令
@@ -136,13 +136,13 @@ chmod -R 755 data/plugins/astrbot_plugin_turnrig
 
 - [ ] 插件在WebUI中显示为「运行中」状态
 - [ ] 配置文件格式正确且已保存
-- [ ] 机器人在源群和目标群中都有足够的权限
+- [ ] 机器人没有被风控
 - [ ] 测试转发功能正常工作
 - [ ] 插件日志没有错误信息
 
 ## 🎉 下一步
 
-恭喜你成功安装了麦咪的转发插件喵♡～ 接下来你可以：
+恭喜你成功安装了 **Turnrig** 转发插件 接下来你可以：
 
 1. 📖 阅读 [配置说明](configuration.md) 了解详细配置选项
 2. 🚀 查看 [使用教程](usage.md) 学习高级功能
@@ -150,4 +150,4 @@ chmod -R 755 data/plugins/astrbot_plugin_turnrig
 
 ---
 
-祝你使用愉快喵♡～ 如果遇到任何问题，随时可以在GitHub上提issue或加群讨论！✨ 
+祝你使用愉快 如果遇到任何问题，随时可以在GitHub上提issue或加群讨论！✨ 
