@@ -194,5 +194,3 @@
 - GitHub: [IGCrystal](https://github.com/IGCrystal-NEO)
 
 感谢使用转发侦听插件！希望它能为你带来便利❤️
-
-<img src="https://raw.githubusercontent.com/IGCyukira/IGCyukira/refs/heads/main/img/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8821%E6%97%A5%2017_32_36.png" width="100%" />
