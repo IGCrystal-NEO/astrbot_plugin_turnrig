@@ -1,6 +1,6 @@
 # ⚙️ 配置说明
 
-欢迎查看麦咪转发插件的详细配置说明喵♡～ 这里会告诉你如何正确配置所有功能！
+欢迎查看 **Turnrig** 插件的详细配置说明 这里会告诉你如何正确配置所有功能！
 
 ## 📁 配置文件位置
 
@@ -9,7 +9,7 @@
 AstrBot/data/plugins_data/astrbot_plugin_turnrig/config.json
 ```
 
-> 💡 **提示**: 配置文件会在插件首次启动时自动创建喵～
+> 💡 **提示**: 配置文件会在插件首次启动时自动创建
 
 ## 🏗️ 配置结构
 
@@ -198,11 +198,11 @@ AstrBot/data/plugins_data/astrbot_plugin_turnrig/config.json
 /turnrig threshold 任务ID 数量
 ```
 
-详细命令说明请查看 [使用教程](usage.md) 喵～
+详细命令说明请查看 [使用教程](usage.md) 
 
-### 配置文件热更新
+### 配置文件更新并应用
 
-插件支持配置文件的热更新，修改配置文件后会在下次任务执行时生效，无需重启插件喵～
+修改配置文件后会在下次任务执行时生效，需要重启插件
 
 ## 🔍 配置验证
 
@@ -262,7 +262,7 @@ AstrBot/data/plugins_data/astrbot_plugin_turnrig/config.json
 
 ### 缓存优化
 
-插件会自动清理过期的消息缓存，默认保留7天的数据喵～
+插件会自动清理过期的消息缓存，默认保留7天的数据
 
 ## 🚨 注意事项
 
@@ -273,6 +273,6 @@ AstrBot/data/plugins_data/astrbot_plugin_turnrig/config.json
 
 ---
 
-配置完成后，记得重启插件或使用命令重载配置让更改生效喵♡～ ✨
+配置完成后，记得重启插件或使用命令重载配置让更改生效 ✨
 
 如果配置过程中遇到问题，可以查看 [故障排除](troubleshooting.md) 文档！ 
