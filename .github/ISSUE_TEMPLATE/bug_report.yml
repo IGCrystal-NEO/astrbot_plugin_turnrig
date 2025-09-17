@@ -1,5 +1,5 @@
 name: 🐛 Bug报告
-description: 报告插件的错误或异常行为喵～
+description: 报告插件的错误或异常行为
 title: "[BUG] "
 labels: ["bug", "需要确认"]
 assignees: []
@@ -8,64 +8,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢你使用麦咪的转发插件喵♡～ 请详细描述遇到的问题，这样麦咪才能更好地帮助你解决问题呢！✨
+        感谢你使用 **Turnrig** 请详细描述遇到的问题，这样我们才能更好地帮助你解决问题呢！✨
 
   - type: textarea
     id: bug-description
     attributes:
-      label: 🔍 问题描述
-      description: 清晰简洁地描述遇到的问题喵～
+      label: 🔍 问题描述与复现步骤
+      description: 清晰简洁地描述遇到的问题
       placeholder: 例如：转发消息时出现错误，或者某个功能不工作等...
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction-steps
-    attributes:
-      label: 🔄 复现步骤
-      description: 详细说明如何重现这个问题喵～
-      placeholder: |
-        1. 进入 '...'
-        2. 点击 '...'
-        3. 滚动到 '...'
-        4. 出现错误
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected-behavior
-    attributes:
-      label: ✅ 期望行为
-      description: 描述你期望应该发生什么喵～
-      placeholder: 应该正常转发消息到目标群组...
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual-behavior
-    attributes:
-      label: ❌ 实际行为
-      description: 描述实际发生了什么喵～
-      placeholder: 实际上出现了错误提示，或者消息没有被转发...
-    validations:
-      required: true
-
-  - type: dropdown
-    id: message-type
-    attributes:
-      label: 📝 消息类型
-      description: 出问题的是哪种类型的消息喵？
-      options:
-        - 文本消息
-        - 图片消息
-        - 语音消息
-        - 视频消息
-        - 转发消息
-        - 引用回复
-        - At消息
-        - 表情包
-        - 混合消息
-        - 其他
     validations:
       required: true
 
@@ -73,7 +23,7 @@ body:
     id: platform
     attributes:
       label: 🤖 平台类型
-      description: 在哪个协议端上遇到的问题喵？
+      description: 在哪个协议端上遇到的问题？
       options:
         - NapCat
         - Lagrange
@@ -81,59 +31,22 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: qq-version
-    attributes:
-      label: 📱 QQ版本
-      description: 请提供QQ版本信息喵～
-      placeholder: 例如：9.0.30.xxx (手机QQ) 或 9.7.x.xxx (PC QQ)
-
   - type: textarea
     id: logs
     attributes:
       label: 📋 相关日志
-      description: 请提供相关的错误日志或截图喵～
+      description: 请提供相关的错误日志或截图
       placeholder: |
         请粘贴相关的日志内容，或者上传截图...
         日志通常在 AstrBot 的日志文件中可以找到
       render: shell
 
-  - type: textarea
-    id: plugin-config
-    attributes:
-      label: ⚙️ 插件配置
-      description: 请提供相关的插件配置信息（请隐藏敏感信息如token等）喵～
-      placeholder: |
-        请粘贴相关的配置内容，记得隐藏敏感信息...
-      render: json
-
   - type: input
     id: plugin-version
     attributes:
-      label: 🏷️ 插件版本
-      description: 你使用的插件版本是多少喵？
+      label: 🏷️ 插件版本/AstrBot版本/QQ版本/协议端
+      description: 你使用的插件、AstrBot、QQ、协议端的版本是多少？
       placeholder: 例如：v1.1.0
-    validations:
-      required: true
-
-  - type: input
-    id: astrbot-version
-    attributes:
-      label: 🤖 AstrBot版本
-      description: 你使用的AstrBot版本是多少喵？
-      placeholder: 例如：v3.x.x
-
-  - type: dropdown
-    id: frequency
-    attributes:
-      label: 🔁 发生频率
-      description: 这个问题多久发生一次喵？
-      options:
-        - 总是发生
-        - 经常发生
-        - 偶尔发生
-        - 很少发生
-        - 只发生过一次
     validations:
       required: true
 
@@ -141,14 +54,14 @@ body:
     id: additional-context
     attributes:
       label: 📎 其他信息
-      description: 还有什么其他相关的信息想告诉麦咪的吗？
+      description: 还有什么其他相关的信息想告诉我们的吗？
       placeholder: 例如：环境信息、相关的其他插件、特殊的使用场景等...
 
   - type: checkboxes
     id: terms
     attributes:
       label: ✅ 确认事项
-      description: 请确认以下事项喵～
+      description: 请确认以下事项
       options:
         - label: 我已经搜索了现有的issues，没有找到重复的问题
           required: true
