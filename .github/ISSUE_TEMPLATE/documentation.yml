@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢你帮助改善我们的文档喵 好的文档让更多人能享受插件的便利！✨
+        感谢你帮助改善我们的文档 好的文档让更多人能享受插件的便利！✨
 
   - type: dropdown
     id: doc-type
