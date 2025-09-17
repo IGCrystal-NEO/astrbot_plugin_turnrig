@@ -1,6 +1,6 @@
 # 🧩 组件设计
 
-欢迎查看麦咪转发插件的详细组件设计文档喵♡～ 这里深入介绍每个组件的设计思想和实现细节！
+欢迎查看 **Turnrign** 插件的详细组件设计文档 这里深入介绍每个组件的设计思想和实现细节！
 
 ## 🎮 Main Plugin (主插件)
 
@@ -11,7 +11,7 @@
 ```python
 class TurnrigPlugin:
     """
-    麦咪转发插件主类喵～ 🎮
+    turnrig 插件主类
     
     职责：
     - 插件生命周期管理
@@ -39,7 +39,7 @@ class TurnrigPlugin:
 ```python
 async def initialize(self):
     """
-    插件初始化喵～ 🚀
+    插件初始化
     
     初始化顺序：
     1. 创建数据目录
@@ -50,7 +50,7 @@ async def initialize(self):
     
 async def destroy(self):
     """
-    插件销毁喵～ 🗑️
+    插件销毁
     
     清理顺序：
     1. 保存缓存数据
@@ -63,35 +63,35 @@ async def destroy(self):
 
 ```python
 def load_config(self):
-    """加载配置文件喵～ 📂"""
+    """加载配置文件"""
     
 def save_config(self):
-    """保存配置文件喵～ 💾"""
+    """保存配置文件"""
     
 def validate_config(self, config: dict) -> bool:
-    """验证配置有效性喵～ ✅"""
+    """验证配置有效性"""
 ```
 
 #### 3. 组件协调
 
 ```python
 def get_all_enabled_tasks(self) -> list:
-    """获取所有启用的任务喵～"""
+    """获取所有启用的任务"""
     
 def get_task_by_id(self, task_id: str) -> dict:
-    """根据ID获取任务配置喵～"""
+    """根据ID获取任务配置"""
 ```
 
 ## 👂 Message Listener (消息监听器)
 
 ### 设计概述
 
-消息监听器是系统的感知器官，负责监听所有消息事件并进行预处理喵～
+消息监听器是系统的感知器官，负责监听所有消息事件并进行预处理
 
 ```python
 class MessageListener:
     """
-    消息监听器喵～ 👂
+    消息监听器
     
     职责：
     - 监听所有消息事件
@@ -110,7 +110,7 @@ class MessageListener:
 #### 1. 多层过滤机制
 
 > [!TIP]
-> 这图可能是错的。
+> 该图可能是不准确的。
 
 ```mermaid
 flowchart TD
@@ -132,7 +132,7 @@ flowchart TD
 ```python
 async def on_all_message(self, event: AstrMessageEvent):
     """
-    消息处理主流程喵～ 🔄
+    消息处理主流程
     
     处理步骤：
     1. 消息ID提取和去重
@@ -150,7 +150,7 @@ async def on_all_message(self, event: AstrMessageEvent):
 ```python
 def _extract_onebot_fields(self, event: AstrMessageEvent) -> dict:
     """
-    OneBot协议字段提取喵～ 🔍
+    OneBot协议字段提取
     
     提取字段：
     - message_type: 消息类型
@@ -160,7 +160,7 @@ def _extract_onebot_fields(self, event: AstrMessageEvent) -> dict:
 
 async def on_group_upload_notice(self, event):
     """
-    群文件上传通知处理喵～ 📁
+    群文件上传通知处理
     
     处理文件信息：
     - name: 文件名
@@ -173,12 +173,12 @@ async def on_group_upload_notice(self, event):
 
 ### 设计概述
 
-转发管理器是系统的大脑，负责协调所有转发相关的操作喵～
+转发管理器是系统的大脑，负责协调所有转发相关的操作
 
 ```python
 class ForwardManager:
     """
-    转发管理器喵～ 📤
+    转发管理器
     
     职责：
     - 转发逻辑协调
@@ -209,7 +209,7 @@ class ForwardManager:
 ```python
 async def forward_messages(self, task_id: str, session_id: str):
     """
-    转发消息核心算法喵～ 🧠
+    转发消息核心算法
     
     防重复策略：
     1. 函数级别锁定：防止相同参数的并发调用
@@ -233,7 +233,7 @@ async def forward_messages(self, task_id: str, session_id: str):
 ```python
 def check_forward_threshold(self, task: dict, messages: list) -> bool:
     """
-    检查是否达到转发阈值喵～ 📊
+    检查是否达到转发阈值
     
     检查逻辑：
     1. 过滤有效消息
@@ -251,12 +251,12 @@ def check_forward_threshold(self, task: dict, messages: list) -> bool:
 
 ### 设计概述
 
-消息构建器负责将接收到的消息转换为适合转发的格式喵～
+消息构建器负责将接收到的消息转换为适合转发的格式
 
 ```python
 class MessageBuilder:
     """
-    消息构建器喵～ 🏗️
+    消息构建器
     
     职责：
     - 消息格式转换
@@ -273,7 +273,7 @@ class MessageBuilder:
 ```python
 async def build_forward_node(self, msg_data: dict) -> dict:
     """
-    构建转发节点喵～ 🔧
+    构建转发节点
     
     构建流程：
     1. 提取基础信息（发送者、时间等）
@@ -298,7 +298,7 @@ async def build_forward_node(self, msg_data: dict) -> dict:
 ```python
 async def _process_component(self, comp_type: str, comp: dict, timestamp: int) -> dict:
     """
-    组件处理调度器喵～ 🔀
+    组件处理调度器
     
     支持的组件类型：
     - plain: 纯文本
@@ -326,7 +326,7 @@ async def _process_component(self, comp_type: str, comp: dict, timestamp: int) -
 ```python
 async def _process_image_component(self, comp: dict) -> dict:
     """
-    图片组件处理喵～ 🖼️
+    图片组件处理
     
     处理策略：
     1. 检查是否为特殊表情(MFace)
@@ -348,12 +348,12 @@ async def _process_image_component(self, comp: dict) -> dict:
 
 ### 设计概述
 
-消息发送器负责将构建好的消息发送到各个目标平台喵～
+消息发送器负责将构建好的消息发送到各个目标平台
 
 ```python
 class MessageSender:
     """
-    消息发送器喵～ 📡
+    消息发送器
     
     职责：
     - 多平台消息发送
@@ -377,7 +377,7 @@ class MessageSender:
 #### 1. 多级发送策略
 
 > [!TIP]
-> 这图可能是错的。
+> 该图可能是不准确的。
 
 ```mermaid
 flowchart TD
@@ -398,7 +398,7 @@ flowchart TD
 ```python
 async def send_forward_message_via_api(self, target_session: str, nodes_list: list[dict]) -> bool:
     """
-    API发送策略喵～ 🎯
+    API发送策略
     
     发送流程：
     1. 解析目标会话信息
@@ -423,7 +423,7 @@ async def send_forward_message_via_api(self, target_session: str, nodes_list: li
 ```python
 def _add_sent_message(self, session_id: str, message_id: str):
     """
-    添加已发送消息记录喵～ 📝
+    添加已发送消息记录
     
     记录策略：
     1. 使用线程安全的锁机制
@@ -433,10 +433,10 @@ def _add_sent_message(self, session_id: str, message_id: str):
     """
     
 def _is_message_sent(self, session_id: str, message_id: str) -> bool:
-    """检查消息是否已发送喵～ 🔍"""
+    """检查消息是否已发送"""
     
 def _cleanup_expired_messages(self):
-    """清理过期消息记录喵～ 🧹"""
+    """清理过期消息记录"""
 ```
 
 ## 💾 Cache Manager (缓存管理器)
@@ -448,7 +448,7 @@ def _cleanup_expired_messages(self):
 ```python
 class CacheManager:
     """
-    缓存管理器喵～ 💾
+    缓存管理器
     
     职责：
     - 失败消息缓存
@@ -482,7 +482,7 @@ failed_messages_cache = {
 ```python
 def add_failed_message(self, target_session: str, task_id: str, session_id: str):
     """
-    添加失败消息喵～ ➕
+    添加失败消息
     
     添加策略：
     1. 生成唯一键
@@ -492,22 +492,22 @@ def add_failed_message(self, target_session: str, task_id: str, session_id: str)
     """
     
 def remove_failed_message(self, target_session: str, task_id: str, session_id: str):
-    """移除失败消息喵～ ➖"""
+    """移除失败消息"""
     
 def cleanup_expired_failed_messages(self):
-    """清理过期失败消息喵～ 🧹"""
+    """清理过期失败消息"""
 ```
 
 ## 🔄 Retry Manager (重试管理器)
 
 ### 设计概述
 
-重试管理器负责智能重试失败的操作，提高系统的可靠性喵～
+重试管理器负责智能重试失败的操作，提高系统的可靠性
 
 ```python
 class RetryManager:
     """
-    重试管理器喵～ 🔄
+    重试管理器
     
     职责：
     - 失败消息重试
@@ -524,7 +524,7 @@ class RetryManager:
 ```python
 async def retry_failed_messages(self):
     """
-    重试失败消息喵～ 🔁
+    重试失败消息
     
     重试流程：
     1. 获取所有失败消息
@@ -547,7 +547,7 @@ async def retry_failed_messages(self):
 ```python
 def _should_retry(self, failed_msg: dict) -> bool:
     """
-    判断是否应该重试喵～ 🤔
+    判断是否应该重试
     
     判断条件：
     1. 重试次数未超限
@@ -570,12 +570,12 @@ def _should_retry(self, failed_msg: dict) -> bool:
 
 ### 设计概述
 
-下载助手负责处理所有媒体文件的下载、缓存和转换操作喵～
+下载助手负责处理所有媒体文件的下载、缓存和转换操作
 
 ```python
 class DownloadHelper:
     """
-    下载助手喵～ 📥
+    下载助手
     
     职责：
     - 媒体文件下载
@@ -592,7 +592,7 @@ class DownloadHelper:
 ```python
 async def download_image(self, url: str, headers: dict = None) -> str:
     """
-    智能图片下载喵～ 🖼️
+    智能图片下载
     
     下载策略：
     1. URL有效性检查
@@ -616,7 +616,7 @@ async def download_image(self, url: str, headers: dict = None) -> str:
 ```python
 def cleanup_old_files(self, max_age_hours: int = 24):
     """
-    清理过期文件喵～ 🧹
+    清理过期文件
     
     清理策略：
     1. 扫描临时目录
@@ -626,10 +626,10 @@ def cleanup_old_files(self, max_age_hours: int = 24):
     """
     
 def get_file_info(self, file_path: str) -> dict:
-    """获取文件信息喵～ 📊"""
+    """获取文件信息"""
     
 async def convert_image_format(self, input_path: str, target_format: str) -> str:
-    """转换图片格式喵～ 🔄"""
+    """转换图片格式"""
 ```
 
 ## 🧠 智能缓存设计
@@ -637,7 +637,7 @@ async def convert_image_format(self, input_path: str, target_format: str) -> str
 ### 多级缓存架构
 
 > [!TIP]
-> 这图可能是错的。
+> 该图可能是不准确的。
 
 ```mermaid
 graph TD
@@ -663,7 +663,7 @@ graph TD
 
 ```python
 class ThreadSafeComponent:
-    """线程安全组件基类喵～ 🔒"""
+    """线程安全组件基类"""
     
     def __init__(self):
         self._lock = threading.RLock()  # 递归锁
@@ -690,6 +690,6 @@ class ThreadSafeComponent:
 
 ---
 
-这套组件设计为麦咪转发插件提供了清晰的架构指导，每个组件都有明确的职责边界和良好的扩展性喵♡～ ✨
+这套组件设计为 **Turnrig** 插件提供了清晰的架构指导，每个组件都有明确的职责边界和良好的扩展性 ✨
 
 如需了解数据在组件间的流转过程，请查看 [数据流图](message-flow.md) 文档！ 
