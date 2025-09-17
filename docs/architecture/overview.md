@@ -1,12 +1,12 @@
 # 🎯 设计概览
 
-欢迎了解麦咪转发插件的整体设计理念和架构思想喵♡～ 这里会带你深入理解插件的核心设计！
+欢迎了解 **Turnrig** 插件的整体设计理念和架构思想 这里会带你深入理解插件的核心设计！
 
 ## 🌟 设计理念
 
 ### 核心目标
 
-麦咪转发插件旨在为AstrBot提供强大而灵活的消息转发能力，让不同会话之间的消息能够自由流动喵～
+**Turnrig** 插件旨在为 `AstrBot` 提供强大而灵活的消息转发能力，让不同会话之间的消息能够自由流动
 
 1. **🔄 智能转发**: 基于规则自动转发消息，支持多种监听和转发模式
 2. **🛡️ 稳定可靠**: 具备完善的错误处理和重试机制
@@ -41,7 +41,7 @@
 ### 系统架构图
 
 > [!TIP]
-> 这图可能是错的。
+> 该图可能是不准确的。
 
 ```mermaid
 graph TB
@@ -110,7 +110,7 @@ graph TB
 ### 消息处理流程
 
 > [!TIP]
-> 这图可能是错的。
+> 该图可能是不准确的。
 
 ```mermaid
 sequenceDiagram
@@ -150,7 +150,7 @@ sequenceDiagram
 ### 配置管理流程
 
 > [!TIP]
-> 这图可能是错的。
+> 该图可能是不准确的。
 
 ```mermaid
 flowchart TD
@@ -212,41 +212,41 @@ flowchart TD
 
 ```python
 class ForwardPlugin:
-    """可扩展的转发插件基类喵～"""
+    """可扩展的转发插件基类"""
     
     def __init__(self):
         self.handlers = {}
         self.filters = {}
         
     def register_handler(self, message_type: str, handler: callable):
-        """注册消息类型处理器喵～"""
+        """注册消息类型处理器"""
         
     def register_filter(self, filter_name: str, filter_func: callable):
-        """注册消息过滤器喵～"""
+        """注册消息过滤器"""
         
     def load_extension(self, extension_path: str):
-        """动态加载扩展模块喵～"""
+        """动态加载扩展模块"""
 ```
 
 ### 平台适配器
 
 ```python
 class PlatformAdapter:
-    """平台适配器基类喵～"""
+    """平台适配器基类"""
     
     async def send_message(self, target: str, content: dict) -> bool:
-        """发送消息到特定平台喵～"""
+        """发送消息到特定平台"""
         raise NotImplementedError
         
     async def download_media(self, url: str) -> str:
-        """下载媒体文件喵～"""
+        """下载媒体文件"""
         raise NotImplementedError
         
 class QQAdapter(PlatformAdapter):
-    """QQ平台适配器喵～"""
+    """QQ平台适配器"""
     
 class TelegramAdapter(PlatformAdapter):
-    """Telegram平台适配器喵～"""
+    """Telegram平台适配器"""
 ```
 
 ## 🚀 性能优化策略
@@ -295,7 +295,7 @@ class TelegramAdapter(PlatformAdapter):
 
 ```python
 class PerformanceMetrics:
-    """性能指标收集器喵～"""
+    """性能指标收集器"""
     
     def __init__(self):
         self.message_count = 0
@@ -304,13 +304,13 @@ class PerformanceMetrics:
         self.cache_hit_rate = 0.0
         
     def record_message_processed(self):
-        """记录消息处理喵～"""
+        """记录消息处理"""
         
     def record_forward_result(self, success: bool, latency: float):
-        """记录转发结果喵～"""
+        """记录转发结果"""
         
     def get_summary(self) -> dict:
-        """获取性能摘要喵～"""
+        """获取性能摘要"""
 ```
 
 ### 日志系统
@@ -323,10 +323,10 @@ class PerformanceMetrics:
 
 ```python
 class HealthChecker:
-    """健康状态检查器喵～"""
+    """健康状态检查器"""
     
     async def check_component_health(self) -> dict:
-        """检查各组件健康状态喵～"""
+        """检查各组件健康状态"""
         return {
             "message_listener": "healthy",
             "forward_manager": "healthy", 
@@ -335,28 +335,8 @@ class HealthChecker:
         }
 ```
 
-## 🔮 未来发展方向
-
-### 功能增强
-
-1. **AI智能过滤**: 基于AI的消息内容智能分析和过滤
-2. **多媒体支持**: 视频、音频等多媒体内容的转发支持
-3. **实时翻译**: 跨语言消息自动翻译功能
-
-### 性能提升
-
-1. **分布式架构**: 支持多实例分布式部署
-2. **流式处理**: 大容量消息的流式处理
-3. **边缘计算**: 就近处理减少延迟
-
-### 生态集成
-
-1. **插件市场**: 第三方插件生态系统
-2. **API开放**: 开放API供第三方集成
-3. **云服务**: 云端配置同步和备份
-
 ---
 
-这个设计概览展现了麦咪转发插件的完整架构思想，为后续的开发和维护提供了清晰的指导方向喵♡～ ✨
+这个设计概览展现了插件的完整架构思想，为后续的开发和维护提供了清晰的指导方向 ✨
 
 如需了解具体组件的详细设计，请查看 [组件设计](component-design.md) 和 [数据流图](message-flow.md) 文档！ 
