@@ -12,6 +12,8 @@
 
 <img src="https://count.getloli.com/@:astrbot_plugin_turnig" alt=":astrbot_plugin_turnig" width="50%" />
 
+<br>
+<br>
 
 > [!NOTE]
 > 将在 `v1.7.0` 支持 `Telegram`、`Discord`、`QQ` 各平台之间的监听转发。
