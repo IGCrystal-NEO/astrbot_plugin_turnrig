@@ -67,7 +67,7 @@ class ConfigManager:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
 
-            logger.info(f"配置已保存到 {self.config_path} 喵～ 💫")
+            logger.debug(f"配置已保存到 {self.config_path} 喵～ 💫")
             return True
         except Exception as e:
             # 保存失败了喵，好伤心 😿
