@@ -1,8 +1,17 @@
+<img width="45%" align=left alt="Turnrig" src="https://github.com/user-attachments/assets/ce698417-9a60-4cc2-987d-8ebcc0efa40f" />
+
+<div align = "center">
+  
 # 转发侦听插件 (TurnRig)
 
-<img src="https://count.getloli.com/@:astrbot_plugin_turnig" alt=":astrbot_plugin_turnig" width="100%" />
+</div>
 
 > 一个消息监听与转发插件，支持多种消息类型
+
+---
+
+<img src="https://count.getloli.com/@:astrbot_plugin_turnig" alt=":astrbot_plugin_turnig" width="50%" />
+
 
 > [!NOTE]
 > 将在 `v1.7.0` 支持 `Telegram`、`Discord`、`QQ` 各平台之间的监听转发。
