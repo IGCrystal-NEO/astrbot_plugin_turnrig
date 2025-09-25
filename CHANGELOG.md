@@ -243,3 +243,39 @@
 - ruff fix
 - start_marker text in update_readme_fortune.py
 
+
+
+## [v1.6.5] - 2025-09-25
+
+### Changed
+- pull request #67 from IGCrystal-NEO/fix-1
+- publish v1.6.5
+- comments for message serialization tool
+- img directory
+- change log level from info to debug for config save
+- fortune message in README script
+- README with future platform support details
+- plugin name and improve documentation clarity
+- diagram accuracy warnings in message flow
+- component design documentation for Turnrig
+- emoji usage guide deprecation notice
+- usage guide for Turnrig plugin
+- troubleshooting guide for clarity and links
+- configuration guide for Turnrig plugin
+- installation guide for Turnrig plugin
+- README.md for Turnrig plugin documentation
+- help wanted issue template descriptions
+- documentation issue template language
+- feature request template wording
+- bug report template for improved clarity
+- pull request template for clarity and accuracy
+- remove image tag
+- pull request #64 from WentUrc/pre-commit-ci-update-config
+- fortune message frequency from hourly to daily
+- update changelog for v1.6.4
+
+### Fixed
+- 适配astrbot新的细粒度平台会话
+- typo in documentation issue template
+- formatting in ISSUE_TEMPLATE config.yml
+
