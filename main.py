@@ -18,7 +18,7 @@ from .messaging.message_listener import MessageListener
     "astrbot_plugin_turnrig",
     "IGCrystal",
     "监听并转发消息的可爱插件喵～ ฅ(^•ω•^ฅ",
-    "1.6.4",
+    "1.6.5",
     "https://github.com/wenturc/astrbot_plugin_turnrig",
 )
 class TurnRigPlugin(Star):
