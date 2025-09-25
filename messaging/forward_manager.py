@@ -326,13 +326,11 @@ class ForwardManager:
 
                         target_platform, target_type, target_id = target_parts
 
-
                         platform = None
                         adapter_type = None
 
                         ctx = getattr(self.plugin, "context", None)
                         if ctx:
-
                             try:
                                 platform = ctx.get_platform(target_platform)
                             except Exception:
@@ -348,7 +346,12 @@ class ForwardManager:
                                 try:
                                     meta_obj = platform.meta()
 
-                                    for attr in ("name", "type", "adapter", "platform_type"):
+                                    for attr in (
+                                        "name",
+                                        "type",
+                                        "adapter",
+                                        "platform_type",
+                                    ):
                                         val = getattr(meta_obj, attr, None)
                                         if val:
                                             adapter_type = val
@@ -374,7 +377,11 @@ class ForwardManager:
                                             try:
                                                 if hasattr(v, "meta"):
                                                     m = v.meta()
-                                                    typ = getattr(m, "name", None) or getattr(m, "type", None) or getattr(m, "adapter", None)
+                                                    typ = (
+                                                        getattr(m, "name", None)
+                                                        or getattr(m, "type", None)
+                                                        or getattr(m, "adapter", None)
+                                                    )
                                             except Exception:
                                                 typ = None
                                             diagnostics.append(f"{k}=>{typ or '?'}")
@@ -387,11 +394,16 @@ class ForwardManager:
                                         f"未找到平台适配器喵: {target_platform} 😿 (无法获取平台管理器诊断)"
                                     )
                             except Exception:
-                                logger.warning(f"未找到平台适配器喵: {target_platform} 😿 (诊断阶段异常)")
+                                logger.warning(
+                                    f"未找到平台适配器喵: {target_platform} 😿 (诊断阶段异常)"
+                                )
                             continue
 
                         # 统一一个发送判定：原逻辑只看字符串 == aiocqhttp；现在也看真实 adapter_type
-                        is_aiocqhttp = target_platform == "aiocqhttp" or adapter_type == "aiocqhttp"
+                        is_aiocqhttp = (
+                            target_platform == "aiocqhttp"
+                            or adapter_type == "aiocqhttp"
+                        )
 
                         # 生成这次转发的批次ID喵～ 🆔
                         batch_id = f"forward_{target_session}_{batch_hash}"
