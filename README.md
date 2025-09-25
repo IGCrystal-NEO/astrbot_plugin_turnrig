@@ -1,10 +1,6 @@
-<img width="50%" align=left alt="Turnrig" src="https://github.com/user-attachments/assets/ce698417-9a60-4cc2-987d-8ebcc0efa40f" />
-
-<div align = "center">
+<img width="30%" align=left alt="Turnrig" src="https://github.com/user-attachments/assets/ce698417-9a60-4cc2-987d-8ebcc0efa40f" />
   
-# 转发侦听插件 (TurnRig)
-
-</div>
+### 转发侦听插件 (TurnRig)
 
 > 一个消息监听与转发插件，支持多种消息类型
 
