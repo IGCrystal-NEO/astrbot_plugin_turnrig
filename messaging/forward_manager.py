@@ -326,17 +326,78 @@ class ForwardManager:
 
                         target_platform, target_type, target_id = target_parts
 
-                        # 检查平台适配器是否存在喵～ 🔍
-                        platform = self.plugin.context.get_platform(target_platform)
+
+                        platform = None
+                        adapter_type = None
+
+                        ctx = getattr(self.plugin, "context", None)
+                        if ctx:
+
+                            try:
+                                platform = ctx.get_platform(target_platform)
+                            except Exception:
+                                platform = None
+
+                            if not platform and hasattr(ctx, "get_platform_inst"):
+                                try:
+                                    platform = ctx.get_platform_inst(target_platform)
+                                except Exception:
+                                    platform = None
+
+                            if platform and hasattr(platform, "meta"):
+                                try:
+                                    meta_obj = platform.meta()
+
+                                    for attr in ("name", "type", "adapter", "platform_type"):
+                                        val = getattr(meta_obj, attr, None)
+                                        if val:
+                                            adapter_type = val
+                                            break
+                                    if not adapter_type:
+                                        adapter_type = getattr(meta_obj, "id", None)
+                                except Exception:
+                                    adapter_type = None
+
                         if not platform:
-                            logger.warning(f"未找到平台适配器喵: {target_platform} 😿")
+                            diagnostics = []
+                            try:
+                                pm = getattr(ctx, "platform_manager", None)
+                                collected = set()
+                                for attr in ("platforms", "_platforms", "instances"):
+                                    container = getattr(pm, attr, None)
+                                    if isinstance(container, dict):
+                                        for k, v in container.items():
+                                            if k in collected:
+                                                continue
+                                            collected.add(k)
+                                            typ = None
+                                            try:
+                                                if hasattr(v, "meta"):
+                                                    m = v.meta()
+                                                    typ = getattr(m, "name", None) or getattr(m, "type", None) or getattr(m, "adapter", None)
+                                            except Exception:
+                                                typ = None
+                                            diagnostics.append(f"{k}=>{typ or '?'}")
+                                if diagnostics:
+                                    logger.warning(
+                                        f"未找到平台适配器喵: {target_platform} 😿 | 已加载: {', '.join(diagnostics)}"
+                                    )
+                                else:
+                                    logger.warning(
+                                        f"未找到平台适配器喵: {target_platform} 😿 (无法获取平台管理器诊断)"
+                                    )
+                            except Exception:
+                                logger.warning(f"未找到平台适配器喵: {target_platform} 😿 (诊断阶段异常)")
                             continue
+
+                        # 统一一个发送判定：原逻辑只看字符串 == aiocqhttp；现在也看真实 adapter_type
+                        is_aiocqhttp = target_platform == "aiocqhttp" or adapter_type == "aiocqhttp"
 
                         # 生成这次转发的批次ID喵～ 🆔
                         batch_id = f"forward_{target_session}_{batch_hash}"
 
                         # 根据平台选择发送方式喵～ 🎯
-                        if target_platform == "aiocqhttp":
+                        if is_aiocqhttp:
                             # 若启用单条消息模式，则跳过合并转发，直接逐条发送
                             if self.plugin.config.get("send_single_messages", False):
                                 logger.info(
