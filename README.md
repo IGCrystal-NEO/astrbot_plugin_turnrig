@@ -1,4 +1,4 @@
-<img width="45%" align=left alt="Turnrig" src="https://github.com/user-attachments/assets/ce698417-9a60-4cc2-987d-8ebcc0efa40f" />
+<img width="50%" align=left alt="Turnrig" src="https://github.com/user-attachments/assets/ce698417-9a60-4cc2-987d-8ebcc0efa40f" />
 
 <div align = "center">
   
@@ -10,11 +10,8 @@
 
 ---
 
-<img src="https://count.getloli.com/@:astrbot_plugin_turnig" alt=":astrbot_plugin_turnig" width="50%" />
+<img src="https://count.getloli.com/@:astrbot_plugin_turnig" alt=":astrbot_plugin_turnig" width="45%" />
 
-<br>
-<br>
-<br>
 <br>
 
 > [!NOTE]
